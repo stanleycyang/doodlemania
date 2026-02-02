@@ -47,6 +47,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const readyButtonScale = useRef(new Animated.Value(1)).current;
   const startButtonScale = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const team1ButtonScale = useRef(new Animated.Value(1)).current;
+  const team2ButtonScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     // Entrance animations
@@ -90,14 +92,14 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.05,
-          duration: 1000,
+          toValue: 1.02,
+          duration: 1200,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 1000,
+          duration: 1200,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
@@ -134,32 +136,22 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   };
 
   const handleTeamPress = (team: 1 | 2) => {
+    const scale = team === 1 ? team1ButtonScale : team2ButtonScale;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.95, duration: 100, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, friction: 3, useNativeDriver: true }),
+    ]).start();
     onJoinTeam(team);
   };
 
   const renderPlayer = (player: Player, index: number) => {
-    const playerAnim = useRef(new Animated.Value(0)).current;
-    
-    useEffect(() => {
-      Animated.spring(playerAnim, {
-        toValue: 1,
-        friction: 6,
-        delay: index * 100,
-        useNativeDriver: true,
-      }).start();
-    }, []);
-
     return (
       <Animated.View 
         key={player.id} 
         style={[
           styles.playerCard,
           player.id === currentPlayer?.id && styles.currentPlayerCard,
-          { 
-            opacity: playerAnim,
-            transform: [{ scale: playerAnim }]
-          }
         ]}
       >
         <View style={styles.playerInfo}>
@@ -183,6 +175,10 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     );
   };
 
+  const isOnTeam1 = currentPlayer?.team === 1;
+  const isOnTeam2 = currentPlayer?.team === 2;
+  const hasNoTeam = !currentPlayer?.team;
+
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View style={[styles.header, { opacity: headerAnim }]}>
@@ -198,65 +194,107 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
       </Animated.View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        {/* Unassigned Players */}
-        {unassignedPlayers.length > 0 && (
-          <Animated.View style={[styles.unassignedSection, { transform: [{ scale: pulseAnim }] }]}>
-            <Text style={styles.sectionTitle}>👋 Waiting to join team</Text>
-            {unassignedPlayers.map((p, i) => renderPlayer(p, i))}
+        {/* Instruction Banner */}
+        {hasNoTeam && (
+          <Animated.View style={[styles.instructionBanner, { transform: [{ scale: pulseAnim }] }]}>
+            <Text style={styles.instructionIcon}>👇</Text>
+            <Text style={styles.instructionText}>Choose your team below!</Text>
           </Animated.View>
         )}
 
-        {/* Teams */}
+        {/* Unassigned Players */}
+        {unassignedPlayers.length > 0 && (
+          <View style={styles.unassignedSection}>
+            <Text style={styles.sectionTitle}>👋 Waiting for team</Text>
+            {unassignedPlayers.map((p, i) => renderPlayer(p, i))}
+          </View>
+        )}
+
+        {/* Teams Container */}
         <View style={styles.teamsContainer}>
-          {/* Team 1 */}
-          <Animated.View style={[styles.teamSection, { transform: [{ translateX: team1Anim }] }]}>
+          {/* Team 1 - Blue */}
+          <Animated.View style={[
+            styles.teamSection,
+            { transform: [{ translateX: team1Anim }, { scale: team1ButtonScale }] },
+            isOnTeam1 && styles.myTeamSection,
+          ]}>
             <TouchableOpacity
-              style={[
-                styles.teamHeader,
-                styles.team1Header,
-                currentPlayer?.team === 1 && styles.activeTeamHeader,
-              ]}
+              style={[styles.teamCard, styles.team1Card]}
               onPress={() => handleTeamPress(1)}
-              disabled={currentPlayer?.team === 1}
+              disabled={isOnTeam1}
+              activeOpacity={0.8}
             >
-              <Text style={styles.teamTitle}>🔵 Team Blue</Text>
-              <Text style={styles.teamCount}>{team1Players.length} 🧑</Text>
+              <View style={styles.teamHeaderRow}>
+                <Text style={styles.teamEmoji}>🔵</Text>
+                <View style={styles.teamHeaderText}>
+                  <Text style={styles.teamTitle}>Team Blue</Text>
+                  <Text style={styles.teamCount}>{team1Players.length} player{team1Players.length !== 1 ? 's' : ''}</Text>
+                </View>
+                {!isOnTeam1 && (
+                  <View style={styles.joinBadge}>
+                    <Text style={styles.joinBadgeText}>JOIN</Text>
+                  </View>
+                )}
+                {isOnTeam1 && (
+                  <View style={styles.yourTeamBadge}>
+                    <Text style={styles.yourTeamText}>YOUR TEAM</Text>
+                  </View>
+                )}
+              </View>
+              
+              <View style={styles.teamPlayers}>
+                {team1Players.length === 0 ? (
+                  <Text style={styles.emptyTeam}>Be the first to join!</Text>
+                ) : (
+                  team1Players.map((p, i) => renderPlayer(p, i))
+                )}
+              </View>
             </TouchableOpacity>
-            <View style={styles.teamPlayers}>
-              {team1Players.length === 0 ? (
-                <Text style={styles.emptyTeam}>Tap to join!</Text>
-              ) : (
-                team1Players.map((p, i) => renderPlayer(p, i))
-              )}
-            </View>
           </Animated.View>
 
-          {/* VS */}
+          {/* VS Badge */}
           <Animated.View style={[styles.vsContainer, { transform: [{ scale: vsScale }] }]}>
             <Text style={styles.vsText}>VS</Text>
           </Animated.View>
 
-          {/* Team 2 */}
-          <Animated.View style={[styles.teamSection, { transform: [{ translateX: team2Anim }] }]}>
+          {/* Team 2 - Red */}
+          <Animated.View style={[
+            styles.teamSection,
+            { transform: [{ translateX: team2Anim }, { scale: team2ButtonScale }] },
+            isOnTeam2 && styles.myTeamSection,
+          ]}>
             <TouchableOpacity
-              style={[
-                styles.teamHeader,
-                styles.team2Header,
-                currentPlayer?.team === 2 && styles.activeTeamHeader,
-              ]}
+              style={[styles.teamCard, styles.team2Card]}
               onPress={() => handleTeamPress(2)}
-              disabled={currentPlayer?.team === 2}
+              disabled={isOnTeam2}
+              activeOpacity={0.8}
             >
-              <Text style={styles.teamTitle}>🔴 Team Red</Text>
-              <Text style={styles.teamCount}>{team2Players.length} 🧑</Text>
+              <View style={styles.teamHeaderRow}>
+                <Text style={styles.teamEmoji}>🔴</Text>
+                <View style={styles.teamHeaderText}>
+                  <Text style={styles.teamTitle}>Team Red</Text>
+                  <Text style={styles.teamCount}>{team2Players.length} player{team2Players.length !== 1 ? 's' : ''}</Text>
+                </View>
+                {!isOnTeam2 && (
+                  <View style={[styles.joinBadge, styles.joinBadgeRed]}>
+                    <Text style={styles.joinBadgeText}>JOIN</Text>
+                  </View>
+                )}
+                {isOnTeam2 && (
+                  <View style={styles.yourTeamBadge}>
+                    <Text style={styles.yourTeamText}>YOUR TEAM</Text>
+                  </View>
+                )}
+              </View>
+              
+              <View style={styles.teamPlayers}>
+                {team2Players.length === 0 ? (
+                  <Text style={styles.emptyTeam}>Be the first to join!</Text>
+                ) : (
+                  team2Players.map((p, i) => renderPlayer(p, i))
+                )}
+              </View>
             </TouchableOpacity>
-            <View style={styles.teamPlayers}>
-              {team2Players.length === 0 ? (
-                <Text style={styles.emptyTeam}>Tap to join!</Text>
-              ) : (
-                team2Players.map((p, i) => renderPlayer(p, i))
-              )}
-            </View>
           </Animated.View>
         </View>
       </ScrollView>
@@ -272,10 +310,10 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
                   currentPlayer?.is_ready && styles.readyButtonActive,
                 ]}
                 onPress={handleReadyPress}
-                activeOpacity={1}
+                activeOpacity={0.9}
               >
                 <Text style={styles.readyButtonText}>
-                  {currentPlayer?.is_ready ? '✓ Ready!' : 'Ready Up'}
+                  {currentPlayer?.is_ready ? '✓ Ready!' : '🎯 Ready Up'}
                 </Text>
               </TouchableOpacity>
             </Animated.View>
@@ -289,7 +327,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
                   ]}
                   onPress={handleStartPress}
                   disabled={!canStart}
-                  activeOpacity={1}
+                  activeOpacity={0.9}
                 >
                   <Text style={styles.startButtonText}>
                     {canStart ? '🎮 Start Game!' : 'Waiting for players...'}
@@ -300,7 +338,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           </>
         ) : (
           <Animated.View style={[styles.joinTeamPrompt, { transform: [{ scale: pulseAnim }] }]}>
-            <Text style={styles.joinTeamText}>👆 Tap a team to join!</Text>
+            <Text style={styles.joinTeamEmoji}>☝️</Text>
+            <Text style={styles.joinTeamText}>Tap a team card above to join!</Text>
           </Animated.View>
         )}
       </Animated.View>
@@ -356,15 +395,31 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 32,
+  },
+  instructionBanner: {
+    backgroundColor: '#FFE66D',
+    padding: 16,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  instructionIcon: {
+    fontSize: 24,
+  },
+  instructionText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#5B3EE6',
   },
   unassignedSection: {
-    marginBottom: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginBottom: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 16,
     padding: 16,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(255,255,255,0.3)',
   },
   sectionTitle: {
     fontSize: 16,
@@ -373,30 +428,45 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   teamsContainer: {
-    gap: 16,
+    gap: 12,
   },
   teamSection: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 20,
     overflow: 'hidden',
-    borderWidth: 2,
+  },
+  myTeamSection: {
+    shadowColor: '#FFE66D',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  teamCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 3,
     borderColor: 'transparent',
   },
-  teamHeader: {
-    padding: 18,
+  team1Card: {
+    backgroundColor: 'rgba(78, 205, 196, 0.25)',
+    borderColor: 'rgba(78, 205, 196, 0.5)',
+  },
+  team2Card: {
+    backgroundColor: 'rgba(255, 107, 107, 0.25)',
+    borderColor: 'rgba(255, 107, 107, 0.5)',
+  },
+  teamHeaderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    gap: 12,
   },
-  team1Header: {
-    backgroundColor: 'rgba(78, 205, 196, 0.5)',
+  teamEmoji: {
+    fontSize: 32,
   },
-  team2Header: {
-    backgroundColor: 'rgba(255, 107, 107, 0.5)',
-  },
-  activeTeamHeader: {
-    borderWidth: 3,
-    borderColor: '#FFE66D',
+  teamHeaderText: {
+    flex: 1,
   },
   teamTitle: {
     fontSize: 22,
@@ -404,21 +474,46 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   teamCount: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.9)',
-    fontWeight: '600',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  joinBadge: {
+    backgroundColor: '#4ECDC4',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  joinBadgeRed: {
+    backgroundColor: '#FF6B6B',
+  },
+  joinBadgeText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  yourTeamBadge: {
+    backgroundColor: '#FFE66D',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  yourTeamText: {
+    color: '#5B3EE6',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   teamPlayers: {
     padding: 16,
     gap: 10,
-    minHeight: 90,
+    minHeight: 80,
   },
   emptyTeam: {
     textAlign: 'center',
     color: 'rgba(255,255,255,0.6)',
     fontStyle: 'italic',
     fontSize: 16,
-    paddingVertical: 24,
+    paddingVertical: 16,
   },
   playerCard: {
     flexDirection: 'row',
@@ -466,7 +561,7 @@ const styles = StyleSheet.create({
   },
   vsContainer: {
     alignItems: 'center',
-    marginVertical: -12,
+    marginVertical: -8,
     zIndex: 1,
   },
   vsText: {
@@ -486,7 +581,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    backgroundColor: 'rgba(0,0,0,0.15)',
   },
   readyButton: {
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -533,11 +628,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderStyle: 'dashed',
     borderColor: '#FFE66D',
+    gap: 8,
+  },
+  joinTeamEmoji: {
+    fontSize: 32,
   },
   joinTeamText: {
-    fontSize: 20,
+    fontSize: 18,
     color: '#FFE66D',
     fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 
