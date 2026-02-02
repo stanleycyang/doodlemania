@@ -22,7 +22,8 @@
     "production": {
       "ios": {
         "appleId": "me@stanleycyang.com",
-        "appleTeamId": "3H2N358EY5"
+        "appleTeamId": "3H2N358EY5",
+        "ascAppId": "6758597147"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",

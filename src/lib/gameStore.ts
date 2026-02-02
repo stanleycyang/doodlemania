@@ -12,6 +12,7 @@ interface GameStore extends GameState {
   
   // Drawing
   addDrawing: (path: DrawingPath) => void;
+  updateDrawing: (pathId: string, path: DrawingPath) => void;
   clearDrawings: () => void;
   undoLastDrawing: () => void;
   
@@ -66,7 +67,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setCurrentPlayer: (player) => set({ currentPlayer: player }),
   
   addDrawing: (path) => set((state) => ({
-    drawings: [...state.drawings, path],
+    drawings: [...state.drawings.filter(d => d.id !== path.id), path],
+  })),
+  
+  // NEW: Update an existing drawing path (for real-time stroke updates)
+  updateDrawing: (pathId, path) => set((state) => ({
+    drawings: state.drawings.map(d => d.id === pathId ? path : d),
   })),
   
   clearDrawings: () => set({ drawings: [] }),

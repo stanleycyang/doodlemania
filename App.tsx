@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Modal,
   Animated,
+  Easing,
   GestureResponderEvent,
   ScrollView,
 } from 'react-native';
@@ -66,46 +67,163 @@ interface GameSettings {
 // Wrapper component to handle mode selection
 export default function App() {
   const [appMode, setAppMode] = useState<AppMode>('select');
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const transitionTo = (mode: AppMode) => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      setAppMode(mode);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
 
   if (appMode === 'select') {
-    return <ModeSelectScreen onSelectMultiplayer={() => setAppMode('multiplayer')} onSelectLocal={() => setAppMode('local')} />;
+    return (
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <ModeSelectScreen 
+          onSelectMultiplayer={() => transitionTo('multiplayer')} 
+          onSelectLocal={() => transitionTo('local')} 
+        />
+      </Animated.View>
+    );
   }
 
   if (appMode === 'multiplayer') {
-    return <MultiplayerApp onPlayLocal={() => setAppMode('local')} />;
+    return (
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <MultiplayerApp onPlayLocal={() => transitionTo('local')} />
+      </Animated.View>
+    );
   }
 
-  return <LocalGameApp onBack={() => setAppMode('select')} />;
+  return (
+    <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      <LocalGameApp onBack={() => transitionTo('select')} />
+    </Animated.View>
+  );
 }
 
-// Mode selection screen
+// Mode selection screen with animations
 function ModeSelectScreen({ onSelectMultiplayer, onSelectLocal }: { onSelectMultiplayer: () => void; onSelectLocal: () => void }) {
+  const logoScale = useRef(new Animated.Value(0)).current;
+  const titleSlide = useRef(new Animated.Value(-30)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const button1Slide = useRef(new Animated.Value(80)).current;
+  const button2Slide = useRef(new Animated.Value(80)).current;
+  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const taglineOpacity = useRef(new Animated.Value(0)).current;
+  const emojiWiggle = useRef(new Animated.Value(0)).current;
+
+  const button1Scale = useRef(new Animated.Value(1)).current;
+  const button2Scale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.spring(logoScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 100,
+        useNativeDriver: true,
+      }),
+      Animated.parallel([
+        Animated.timing(titleSlide, {
+          toValue: 0,
+          duration: 400,
+          easing: Easing.out(Easing.back(1.5)),
+          useNativeDriver: true,
+        }),
+        Animated.timing(titleOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(buttonOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.stagger(150, [
+          Animated.spring(button1Slide, { toValue: 0, friction: 6, tension: 80, useNativeDriver: true }),
+          Animated.spring(button2Slide, { toValue: 0, friction: 6, tension: 80, useNativeDriver: true }),
+        ]),
+      ]),
+      Animated.timing(taglineOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+    ]).start();
+
+    // Emoji wiggle
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(emojiWiggle, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(emojiWiggle, { toValue: -1, duration: 500, useNativeDriver: true }),
+        Animated.timing(emojiWiggle, { toValue: 0, duration: 500, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const handlePress = (scale: Animated.Value, callback: () => void) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.95, duration: 100, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 1, duration: 100, useNativeDriver: true }),
+    ]).start(callback);
+  };
+
+  const emojiRotate = emojiWiggle.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-15deg', '0deg', '15deg'],
+  });
+
   return (
     <SafeAreaView style={modeStyles.container}>
       <View style={modeStyles.content}>
-        <Text style={modeStyles.emoji}>🎨</Text>
-        <Text style={modeStyles.title}>Pictionary</Text>
-        <Text style={modeStyles.subtitle}>Party</Text>
+        <Animated.Text style={[modeStyles.emoji, { transform: [{ scale: logoScale }, { rotate: emojiRotate }] }]}>
+          🎨
+        </Animated.Text>
+        <Animated.Text style={[modeStyles.title, { opacity: titleOpacity, transform: [{ translateY: titleSlide }] }]}>
+          Pictionary
+        </Animated.Text>
+        <Animated.Text style={[modeStyles.subtitle, { opacity: titleOpacity, transform: [{ translateY: titleSlide }] }]}>
+          Party
+        </Animated.Text>
 
-        <View style={modeStyles.buttons}>
-          <TouchableOpacity style={[modeStyles.button, modeStyles.multiplayerButton]} onPress={onSelectMultiplayer}>
-            <Text style={modeStyles.buttonIcon}>🌐</Text>
-            <View>
-              <Text style={modeStyles.buttonTitle}>Online Multiplayer</Text>
-              <Text style={modeStyles.buttonDesc}>Play with friends anywhere</Text>
-            </View>
-          </TouchableOpacity>
+        <Animated.View style={[modeStyles.buttons, { opacity: buttonOpacity }]}>
+          <Animated.View style={{ transform: [{ translateY: button1Slide }, { scale: button1Scale }] }}>
+            <TouchableOpacity 
+              style={[modeStyles.button, modeStyles.multiplayerButton]} 
+              onPress={() => handlePress(button1Scale, onSelectMultiplayer)}
+              activeOpacity={1}
+            >
+              <Text style={modeStyles.buttonIcon}>🌐</Text>
+              <View>
+                <Text style={modeStyles.buttonTitle}>Online Multiplayer</Text>
+                <Text style={modeStyles.buttonDesc}>Play with friends anywhere</Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
 
-          <TouchableOpacity style={[modeStyles.button, modeStyles.localButton]} onPress={onSelectLocal}>
-            <Text style={modeStyles.buttonIcon}>📱</Text>
-            <View>
-              <Text style={modeStyles.buttonTitle}>Local Party</Text>
-              <Text style={modeStyles.buttonDesc}>Same device, pass & play</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
+          <Animated.View style={{ transform: [{ translateY: button2Slide }, { scale: button2Scale }] }}>
+            <TouchableOpacity 
+              style={[modeStyles.button, modeStyles.localButton]} 
+              onPress={() => handlePress(button2Scale, onSelectLocal)}
+              activeOpacity={1}
+            >
+              <Text style={modeStyles.buttonIcon}>📱</Text>
+              <View>
+                <Text style={modeStyles.buttonTitle}>Local Party</Text>
+                <Text style={modeStyles.buttonDesc}>Same device, pass & play</Text>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
 
-        <Text style={modeStyles.tagline}>Draw. Guess. Win!</Text>
+        <Animated.Text style={[modeStyles.tagline, { opacity: taglineOpacity }]}>
+          Draw. Guess. Win!
+        </Animated.Text>
       </View>
     </SafeAreaView>
   );
@@ -123,31 +241,42 @@ const modeStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   emoji: {
-    fontSize: 80,
+    fontSize: 100,
     marginBottom: 8,
   },
   title: {
-    fontSize: 48,
+    fontSize: 52,
     fontWeight: 'bold',
     color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 8,
   },
   subtitle: {
-    fontSize: 36,
-    fontWeight: '600',
+    fontSize: 42,
+    fontWeight: '700',
     color: '#FFB347',
     marginBottom: 48,
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
   },
   buttons: {
     width: '100%',
-    gap: 16,
+    gap: 18,
     marginBottom: 48,
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-    borderRadius: 16,
-    gap: 16,
+    padding: 22,
+    borderRadius: 20,
+    gap: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 8,
   },
   multiplayerButton: {
     backgroundColor: '#FF6B6B',
@@ -156,25 +285,26 @@ const modeStyles = StyleSheet.create({
     backgroundColor: '#4ECDC4',
   },
   buttonIcon: {
-    fontSize: 36,
+    fontSize: 44,
   },
   buttonTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
   },
   buttonDesc: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.85)',
   },
   tagline: {
-    fontSize: 18,
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: 20,
+    color: 'rgba(255,255,255,0.7)',
     fontStyle: 'italic',
+    fontWeight: '500',
   },
 });
 
-// Local game component (existing code)
+// Local game component with animations and fixed timer cleanup
 function LocalGameApp({ onBack }: { onBack: () => void }) {
   const [gameState, setGameState] = useState<GameState>('menu');
   const [currentWord, setCurrentWord] = useState('');
@@ -194,7 +324,49 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
   const [roundNumber, setRoundNumber] = useState(1);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const wordTimerRef = useRef<NodeJS.Timeout | null>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const timerPulse = useRef(new Animated.Value(1)).current;
+  const scoreFlash = useRef(new Animated.Value(0)).current;
+
+  // FIXED: Clean up timer on unmount and state change
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (wordTimerRef.current) {
+        clearTimeout(wordTimerRef.current);
+        wordTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // Clean up timer when leaving drawing state
+  useEffect(() => {
+    if (gameState !== 'drawing') {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (wordTimerRef.current) {
+        clearTimeout(wordTimerRef.current);
+        wordTimerRef.current = null;
+      }
+    }
+  }, [gameState]);
+
+  // Timer pulse animation
+  useEffect(() => {
+    if (timeLeft <= 10 && timeLeft > 0 && gameState === 'drawing') {
+      Animated.sequence([
+        Animated.timing(timerPulse, { toValue: 1.2, duration: 200, useNativeDriver: true }),
+        Animated.timing(timerPulse, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }, [timeLeft, gameState]);
 
   const getRandomWord = useCallback(() => {
     let wordPool: string[];
@@ -220,7 +392,7 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
     setGameState('drawing');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    setTimeout(() => {
+    wordTimerRef.current = setTimeout(() => {
       setShowWord(false);
       timerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
@@ -229,9 +401,6 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
             setGameState('reveal');
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             return 0;
-          }
-          if (prev <= 10) {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }
           return prev - 1;
         });
@@ -243,9 +412,15 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
     if (timerRef.current) clearInterval(timerRef.current);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
+    // Score animation
     Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 1.3, duration: 150, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1.4, duration: 150, useNativeDriver: true }),
       Animated.timing(scaleAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+    ]).start();
+    
+    Animated.sequence([
+      Animated.timing(scoreFlash, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(scoreFlash, { toValue: 0, duration: 200, useNativeDriver: true }),
     ]).start();
 
     setScores((prev) => {
@@ -286,6 +461,7 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
   const handleTouchStart = (event: GestureResponderEvent) => {
     const { locationX, locationY } = event.nativeEvent;
     setCurrentPath(`M${locationX.toFixed(0)},${locationY.toFixed(0)}`);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleTouchMove = (event: GestureResponderEvent) => {
@@ -311,7 +487,9 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
             key={index}
             style={[
               styles.teamScore, 
-              { transform: [{ scale: currentTeam === index ? scaleAnim : 1 }] },
+              { 
+                transform: [{ scale: currentTeam === index ? scaleAnim : 1 }],
+              },
               currentTeam === index && styles.activeTeam
             ]}
           >
@@ -355,7 +533,10 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
             <TouchableOpacity
               key={time}
               style={[styles.optionButton, settings.timeLimit === time && styles.optionSelected]}
-              onPress={() => setSettings((s) => ({ ...s, timeLimit: time }))}
+              onPress={() => {
+                setSettings((s) => ({ ...s, timeLimit: time }));
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
             >
               <Text style={[styles.optionText, settings.timeLimit === time && styles.optionTextSelected]}>
                 {time}s
@@ -372,7 +553,10 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
             <TouchableOpacity
               key={diff}
               style={[styles.optionButton, settings.difficulty === diff && styles.optionSelected]}
-              onPress={() => setSettings((s) => ({ ...s, difficulty: diff }))}
+              onPress={() => {
+                setSettings((s) => ({ ...s, difficulty: diff }));
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
             >
               <Text style={[styles.optionText, settings.difficulty === diff && styles.optionTextSelected]}>
                 {diff.charAt(0).toUpperCase() + diff.slice(1)}
@@ -392,6 +576,7 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
               onPress={() => {
                 setSettings((s) => ({ ...s, teamCount: count }));
                 setScores(Array(count).fill(0));
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
             >
               <Text style={[styles.optionText, settings.teamCount === count && styles.optionTextSelected]}>
@@ -420,11 +605,11 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
         </View>
       </Modal>
 
-      <View style={styles.timerContainer}>
+      <Animated.View style={[styles.timerContainer, { transform: [{ scale: timerPulse }] }]}>
         <Text style={[styles.timerText, timeLeft <= 10 && styles.timerWarning]}>
           ⏱️ {timeLeft}s
         </Text>
-      </View>
+      </Animated.View>
 
       <View 
         style={styles.canvasContainer}

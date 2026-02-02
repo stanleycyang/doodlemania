@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { View, StyleSheet, Alert, Animated, Easing } from 'react-native';
 import { HomeScreen } from './screens/HomeScreen';
 import { CreateRoomScreen } from './screens/CreateRoomScreen';
 import { JoinRoomScreen } from './screens/JoinRoomScreen';
@@ -7,14 +7,6 @@ import { LobbyScreen } from './screens/LobbyScreen';
 import { MultiplayerGameScreen } from './screens/MultiplayerGameScreen';
 import { useMultiplayer } from './hooks/useMultiplayer';
 import { isSupabaseConfigured } from './lib/supabase';
-
-// Word list for the game
-const WORDS = [
-  'cat', 'dog', 'house', 'tree', 'car', 'sun', 'moon', 'star', 'fish', 'bird',
-  'elephant', 'giraffe', 'pizza', 'guitar', 'rocket', 'beach', 'castle', 'robot',
-  'dragon', 'unicorn', 'ninja', 'pirate', 'dinosaur', 'butterfly', 'rainbow',
-  'volcano', 'submarine', 'helicopter', 'telescope', 'skateboard', 'snowman',
-];
 
 type Screen = 'home' | 'create' | 'join' | 'lobby' | 'game';
 
@@ -25,7 +17,10 @@ interface MultiplayerAppProps {
 export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal }) => {
   const [screen, setScreen] = useState<Screen>('home');
   const [timeRemaining, setTimeRemaining] = useState(60);
-  const [currentWord, setCurrentWord] = useState<string | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Screen transition animation
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const {
     room,
@@ -33,6 +28,8 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal }) =
     currentPlayer,
     isConnected,
     error,
+    drawings,
+    messages,
     createRoom,
     joinRoom,
     leaveRoom,
@@ -40,46 +37,68 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal }) =
     joinTeam,
     startGame,
     tagTeam,
+    endRound,
     sendEvent,
     sendDrawing,
     sendChat,
   } = useMultiplayer();
 
-  // Timer effect
-  useEffect(() => {
-    if (room?.status !== 'playing') return;
+  // Animate screen transitions
+  const transitionTo = useCallback((newScreen: Screen) => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      setScreen(newScreen);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [fadeAnim]);
 
-    const timer = setInterval(() => {
+  // Timer effect - synced with room state
+  useEffect(() => {
+    if (room?.status !== 'playing') {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      return;
+    }
+
+    // Calculate time from round start
+    if (room.round_start_time) {
+      const startTime = new Date(room.round_start_time).getTime();
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, room.settings.timer_seconds - elapsed);
+      setTimeRemaining(remaining);
+    } else {
+      setTimeRemaining(room.settings.timer_seconds);
+    }
+
+    timerRef.current = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
-          // Round ended
-          sendEvent({ type: 'round_ended', result: {
-            round: room.current_round,
-            word: currentWord || '',
-            drawing_team: room.drawing_team,
-            guessing_team: room.drawing_team === 1 ? 2 : 1,
-            guessed_by: null,
-            time_taken: null,
-            points_awarded: 0,
-          }});
-          return 60; // Reset for next round
+          // Round ended - host handles transition
+          if (currentPlayer?.is_host) {
+            endRound();
+          }
+          return room.settings.timer_seconds; // Reset for next round
         }
         return prev - 1;
       });
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [room?.status, room?.current_round]);
-
-  // Handle game start
-  useEffect(() => {
-    if (room?.status === 'playing' && currentPlayer?.is_drawing) {
-      // Pick a random word for the drawer
-      const word = WORDS[Math.floor(Math.random() * WORDS.length)];
-      setCurrentWord(word);
-      setTimeRemaining(room.settings.timer_seconds);
-    }
-  }, [room?.status, room?.current_round, currentPlayer?.is_drawing]);
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [room?.status, room?.round_start_time, room?.current_round, currentPlayer?.is_host, endRound]);
 
   // Show error
   useEffect(() => {
@@ -88,12 +107,15 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal }) =
     }
   }, [error]);
 
-  // Navigate to home when leaving room
+  // Auto-navigate based on room state
   useEffect(() => {
-    if (!room && screen !== 'home' && screen !== 'create' && screen !== 'join') {
-      setScreen('home');
+    if (room?.status === 'playing' && screen === 'lobby') {
+      transitionTo('game');
     }
-  }, [room, screen]);
+    if (!room && screen !== 'home' && screen !== 'create' && screen !== 'join') {
+      transitionTo('home');
+    }
+  }, [room?.status, screen, transitionTo]);
 
   // Handle room creation
   const handleCreateRoom = useCallback(async (playerName: string) => {
@@ -133,26 +155,18 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal }) =
           style: 'destructive',
           onPress: () => {
             leaveRoom();
-            setScreen('home');
+            transitionTo('home');
           }
         },
       ]
     );
-  }, [leaveRoom]);
+  }, [leaveRoom, transitionTo]);
 
   // Handle start game (host only)
   const handleStartGame = useCallback(() => {
-    // Assign first drawer for each team
-    const team1Players = players.filter(p => p.team === 1);
-    const team2Players = players.filter(p => p.team === 2);
-    
-    if (team1Players.length > 0) {
-      sendEvent({ type: 'tag_team', new_drawer_id: team1Players[0].id });
-    }
-    
     startGame();
-    setScreen('game');
-  }, [players, sendEvent, startGame]);
+    transitionTo('game');
+  }, [startGame, transitionTo]);
 
   // Render current screen
   const renderScreen = () => {
@@ -160,8 +174,8 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal }) =
       case 'home':
         return (
           <HomeScreen
-            onCreateRoom={() => setScreen('create')}
-            onJoinRoom={() => setScreen('join')}
+            onCreateRoom={() => transitionTo('create')}
+            onJoinRoom={() => transitionTo('join')}
             onLocalPlay={onPlayLocal}
           />
         );
@@ -170,8 +184,8 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal }) =
         return (
           <CreateRoomScreen
             onCreateRoom={handleCreateRoom}
-            onBack={() => setScreen('home')}
-            onRoomCreated={() => setScreen('lobby')}
+            onBack={() => transitionTo('home')}
+            onRoomCreated={() => transitionTo('lobby')}
           />
         );
 
@@ -179,14 +193,14 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal }) =
         return (
           <JoinRoomScreen
             onJoinRoom={handleJoinRoom}
-            onBack={() => setScreen('home')}
-            onJoined={() => setScreen('lobby')}
+            onBack={() => transitionTo('home')}
+            onJoined={() => transitionTo('lobby')}
           />
         );
 
       case 'lobby':
         if (!room || !currentPlayer) {
-          setScreen('home');
+          transitionTo('home');
           return null;
         }
         return (
@@ -203,7 +217,7 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal }) =
 
       case 'game':
         if (!room || !currentPlayer) {
-          setScreen('home');
+          transitionTo('home');
           return null;
         }
         return (
@@ -211,8 +225,9 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal }) =
             room={room}
             players={players}
             currentPlayer={currentPlayer}
-            messages={[]} // TODO: Connect to game store messages
-            word={currentWord}
+            messages={messages}
+            drawings={drawings}
+            word={room.current_word}
             timeRemaining={timeRemaining}
             onSendDrawing={sendDrawing}
             onSendChat={sendChat}
@@ -226,7 +241,11 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal }) =
     }
   };
 
-  return <View style={styles.container}>{renderScreen()}</View>;
+  return (
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+      {renderScreen()}
+    </Animated.View>
+  );
 };
 
 const styles = StyleSheet.create({
