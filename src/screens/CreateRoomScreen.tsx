@@ -4,11 +4,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   SafeAreaView,
   ActivityIndicator,
   Alert,
   Share,
+  Keyboard,
 } from 'react-native';
 
 interface CreateRoomScreenProps {
@@ -93,44 +95,48 @@ export const CreateRoomScreen: React.FC<CreateRoomScreenProps> = ({
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-
-        <View style={styles.form}>
-          <Text style={styles.title}>Create Game</Text>
-          <Text style={styles.subtitle}>You'll be the host!</Text>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Your Name</Text>
-            <TextInput
-              style={styles.input}
-              value={playerName}
-              onChangeText={setPlayerName}
-              placeholder="Enter your name"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              maxLength={20}
-              autoCapitalize="words"
-              autoCorrect={false}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.createButton, !playerName.trim() && styles.disabledButton]}
-            onPress={handleCreate}
-            disabled={isLoading || !playerName.trim()}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.createButtonText}>Create Room</Text>
-            )}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+            <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
+
+          <View style={styles.form}>
+            <Text style={styles.title}>Create Game</Text>
+            <Text style={styles.subtitle}>You'll be the host!</Text>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Your Name</Text>
+              <TextInput
+                style={styles.input}
+                value={playerName}
+                onChangeText={setPlayerName}
+                placeholder="Enter your name"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                maxLength={20}
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.createButton, !playerName.trim() && styles.disabledButton]}
+              onPress={handleCreate}
+              disabled={isLoading || !playerName.trim()}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.createButtonText}>Create Room</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 };
 

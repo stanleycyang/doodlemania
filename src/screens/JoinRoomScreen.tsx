@@ -4,6 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   SafeAreaView,
   ActivityIndicator,
@@ -60,70 +61,72 @@ export const JoinRoomScreen: React.FC<JoinRoomScreenProps> = ({
   const isValid = playerName.trim().length > 0 && roomCode.length === 6;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-
-        <View style={styles.form}>
-          <Text style={styles.title}>Join Game</Text>
-          <Text style={styles.subtitle}>Enter the room code to play!</Text>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Your Name</Text>
-            <TextInput
-              style={styles.input}
-              value={playerName}
-              onChangeText={setPlayerName}
-              placeholder="Enter your name"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              maxLength={20}
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="next"
-              onSubmitEditing={() => codeInputRef.current?.focus()}
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Room Code</Text>
-            <TextInput
-              ref={codeInputRef}
-              style={[styles.input, styles.codeInput]}
-              value={roomCode}
-              onChangeText={handleCodeChange}
-              placeholder="XXXXXX"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              maxLength={6}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              keyboardType="default"
-              returnKeyType="go"
-              onSubmitEditing={handleJoin}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.joinButton, !isValid && styles.disabledButton]}
-            onPress={handleJoin}
-            disabled={isLoading || !isValid}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.joinButtonText}>Join Room</Text>
-            )}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+            <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
-        </View>
 
-        <View style={styles.helpContainer}>
-          <Text style={styles.helpText}>
-            💡 Ask the host for the 6-character room code
-          </Text>
+          <View style={styles.form}>
+            <Text style={styles.title}>Join Game</Text>
+            <Text style={styles.subtitle}>Enter the room code to play!</Text>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Your Name</Text>
+              <TextInput
+                style={styles.input}
+                value={playerName}
+                onChangeText={setPlayerName}
+                placeholder="Enter your name"
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                maxLength={20}
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="next"
+                onSubmitEditing={() => codeInputRef.current?.focus()}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Room Code</Text>
+              <TextInput
+                ref={codeInputRef}
+                style={[styles.input, styles.codeInput]}
+                value={roomCode}
+                onChangeText={handleCodeChange}
+                placeholder="XXXXXX"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                maxLength={6}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                keyboardType="default"
+                returnKeyType="go"
+                onSubmitEditing={handleJoin}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.joinButton, !isValid && styles.disabledButton]}
+              onPress={handleJoin}
+              disabled={isLoading || !isValid}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.joinButtonText}>Join Room</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.helpContainer}>
+            <Text style={styles.helpText}>
+              💡 Ask the host for the 6-character room code
+            </Text>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 };
 

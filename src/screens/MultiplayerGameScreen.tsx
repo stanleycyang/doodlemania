@@ -12,6 +12,8 @@ import {
   Platform,
   Animated,
   Easing,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
@@ -274,12 +276,17 @@ export const MultiplayerGameScreen: React.FC<MultiplayerGameScreenProps> = ({
     return w.split('').map((c, i) => i === 0 ? c.toUpperCase() : ' _').join('');
   };
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
+      <TouchableWithoutFeedback onPress={dismissKeyboard} accessible={false}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
         {/* Correct Guess Overlay */}
         {showCorrect && (
           <Animated.View style={[
@@ -525,7 +532,8 @@ export const MultiplayerGameScreen: React.FC<MultiplayerGameScreenProps> = ({
             </Text>
           </View>
         )}
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };
