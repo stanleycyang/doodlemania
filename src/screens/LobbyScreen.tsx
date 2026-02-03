@@ -111,7 +111,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await Share.share({
-        message: `Join my Pictionary Party! 🎨\n\nRoom Code: ${room.code}\n\nDownload the app and enter this code to play!`,
+        message: `Join my DoodleMania game! 🎨\n\nRoom Code: ${room.code}\n\nDownload the app and enter this code to play!`,
       });
     } catch (error) {
       console.error('Error sharing:', error);

@@ -1,4 +1,4 @@
-// Multiplayer Types for Pictionary Party
+// Multiplayer Types for DoodleMania
 
 export interface Player {
   id: string;

@@ -161,10 +161,10 @@ function ModeSelectScreen({ onSelectMultiplayer, onSelectLocal }: { onSelectMult
           🎨
         </Animated.Text>
         <Animated.Text style={[modeStyles.title, { opacity: titleOpacity, transform: [{ translateY: titleSlide }] }]}>
-          Pictionary
+          Doodle
         </Animated.Text>
         <Animated.Text style={[modeStyles.subtitle, { opacity: titleOpacity, transform: [{ translateY: titleSlide }] }]}>
-          Party
+          Mania
         </Animated.Text>
 
         <Animated.View style={[modeStyles.buttons, { opacity: buttonOpacity }]}>
@@ -290,6 +290,23 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
   const teamNames = ['Blue', 'Red', 'Green', 'Yellow'];
   const teamBgColors = ['#4ECDC4', '#FF6B6B', '#96CEB4', '#FFE66D'];
 
+  // Start the main game timer (called after countdown finishes)
+  const startGameTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    
+    timerRef.current = setInterval(() => {
+      setTimeLeft((t) => {
+        if (t <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          setGameState('reveal');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+  }, []);
+
   const startRound = useCallback(() => {
     const word = getRandomWord();
     setCurrentWord(word);
@@ -306,35 +323,25 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
     if (wordTimerRef.current) clearTimeout(wordTimerRef.current);
     if (timerRef.current) clearInterval(timerRef.current);
 
-    // Live countdown: 3, 2, 1, then dismiss
-    countdownRef.current = setInterval(() => {
-      setWordCountdown((prev) => {
-        if (prev <= 1) {
-          // Countdown finished - dismiss modal and start game timer
-          if (countdownRef.current) clearInterval(countdownRef.current);
-          setShowWord(false);
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-          
-          // Start the main game timer
-          timerRef.current = setInterval(() => {
-            setTimeLeft((t) => {
-              if (t <= 1) {
-                if (timerRef.current) clearInterval(timerRef.current);
-                setGameState('reveal');
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                return 0;
-              }
-              return t - 1;
-            });
-          }, 1000);
-          
-          return 0;
-        }
+    // Use sequential timeouts for reliable countdown
+    wordTimerRef.current = setTimeout(() => {
+      setWordCountdown(2);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      
+      wordTimerRef.current = setTimeout(() => {
+        setWordCountdown(1);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        return prev - 1;
-      });
+        
+        wordTimerRef.current = setTimeout(() => {
+          // Countdown finished - dismiss modal and start game timer
+          setShowWord(false);
+          setWordCountdown(0);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          startGameTimer();
+        }, 1000);
+      }, 1000);
     }, 1000);
-  }, [getRandomWord, settings.timeLimit]);
+  }, [getRandomWord, settings.timeLimit, startGameTimer]);
 
   const handleGuessCorrect = useCallback(() => {
     // Clear all timers

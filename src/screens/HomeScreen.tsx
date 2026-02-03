@@ -180,7 +180,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               }
             ]}
           >
-            Pictionary
+            Doodle
           </Animated.Text>
           <Animated.Text 
             style={[
@@ -191,7 +191,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               }
             ]}
           >
-            Party
+            Mania
           </Animated.Text>
         </View>
 

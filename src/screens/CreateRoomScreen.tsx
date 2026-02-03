@@ -50,7 +50,7 @@ export const CreateRoomScreen: React.FC<CreateRoomScreenProps> = ({
     
     try {
       await Share.share({
-        message: `Join my Pictionary Party! 🎨\n\nRoom Code: ${roomCode}\n\nDownload the app and enter this code to play!`,
+        message: `Join my DoodleMania game! 🎨\n\nRoom Code: ${roomCode}\n\nDownload the app and enter this code to play!`,
       });
     } catch (error) {
       console.error('Error sharing:', error);
