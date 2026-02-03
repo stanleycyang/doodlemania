@@ -237,6 +237,7 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
   const [selectedColor, setSelectedColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(6);
   const [showWord, setShowWord] = useState(false);
+  const [wordCountdown, setWordCountdown] = useState(3);
   const [settings, setSettings] = useState<GameSettings>({
     timeLimit: 60,
     difficulty: 'mixed',
@@ -246,6 +247,7 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const wordTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
   
   // Animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -260,6 +262,7 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (wordTimerRef.current) clearTimeout(wordTimerRef.current);
+      if (countdownRef.current) clearInterval(countdownRef.current);
     };
   }, [gameState]);
 
@@ -294,27 +297,52 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
     setCurrentPath('');
     setTimeLeft(settings.timeLimit);
     setShowWord(true);
+    setWordCountdown(3);
     setGameState('drawing');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-    wordTimerRef.current = setTimeout(() => {
-      setShowWord(false);
-      timerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            if (timerRef.current) clearInterval(timerRef.current);
-            setGameState('reveal');
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }, 3000);
+    // Clear any existing timers
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    if (wordTimerRef.current) clearTimeout(wordTimerRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    // Live countdown: 3, 2, 1, then dismiss
+    countdownRef.current = setInterval(() => {
+      setWordCountdown((prev) => {
+        if (prev <= 1) {
+          // Countdown finished - dismiss modal and start game timer
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          setShowWord(false);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          
+          // Start the main game timer
+          timerRef.current = setInterval(() => {
+            setTimeLeft((t) => {
+              if (t <= 1) {
+                if (timerRef.current) clearInterval(timerRef.current);
+                setGameState('reveal');
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                return 0;
+              }
+              return t - 1;
+            });
+          }, 1000);
+          
+          return 0;
+        }
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        return prev - 1;
+      });
+    }, 1000);
   }, [getRandomWord, settings.timeLimit]);
 
   const handleGuessCorrect = useCallback(() => {
+    // Clear all timers
     if (timerRef.current) clearInterval(timerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    if (wordTimerRef.current) clearTimeout(wordTimerRef.current);
+    setShowWord(false);
+    
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
     Animated.sequence([
@@ -333,7 +361,12 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
   }, [currentTeam, settings.teamCount]);
 
   const handleSkip = useCallback(() => {
+    // Clear all timers
     if (timerRef.current) clearInterval(timerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    if (wordTimerRef.current) clearTimeout(wordTimerRef.current);
+    setShowWord(false);
+    
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setCurrentTeam((prev) => (prev + 1) % settings.teamCount);
     setRoundNumber((prev) => prev + 1);
@@ -521,20 +554,72 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
     </SafeAreaView>
   );
 
+  // Word Reveal Modal Component with animations
+  const WordRevealModal = () => {
+    const cardScale = useRef(new Animated.Value(0.8)).current;
+    const cardOpacity = useRef(new Animated.Value(0)).current;
+    const countdownScale = useRef(new Animated.Value(1)).current;
+    const wordBounce = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      if (showWord) {
+        // Card entrance animation
+        Animated.parallel([
+          Animated.spring(cardScale, { toValue: 1, friction: 5, tension: 100, useNativeDriver: true }),
+          Animated.timing(cardOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        ]).start();
+        
+        // Word bounce animation
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(wordBounce, { toValue: -8, duration: 400, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+            Animated.timing(wordBounce, { toValue: 0, duration: 400, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          ])
+        ).start();
+      }
+    }, [showWord]);
+
+    useEffect(() => {
+      // Pulse animation on countdown change
+      Animated.sequence([
+        Animated.timing(countdownScale, { toValue: 1.3, duration: 150, useNativeDriver: true }),
+        Animated.spring(countdownScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+      ]).start();
+    }, [wordCountdown]);
+
+    return (
+      <Modal visible={showWord} transparent animationType="fade">
+        <View style={styles.wordModal}>
+          <Animated.View style={[styles.wordCard, { transform: [{ scale: cardScale }], opacity: cardOpacity }]}>
+            <View style={[styles.wordTeamBadge, { backgroundColor: teamBgColors[currentTeam] }]}>
+              <Text style={styles.wordTeamBadgeText}>{teamColors[currentTeam]} Team {teamNames[currentTeam]}</Text>
+            </View>
+            
+            <Text style={styles.wordCardLabel}>Your word is:</Text>
+            <Animated.Text style={[styles.wordCardWord, { transform: [{ translateY: wordBounce }] }]}>
+              {currentWord.toUpperCase()}
+            </Animated.Text>
+            
+            <View style={styles.countdownContainer}>
+              <Text style={styles.wordCardHint}>🤫 Don't say it!</Text>
+              <View style={styles.countdownCircle}>
+                <Animated.Text style={[styles.countdownNumber, { transform: [{ scale: countdownScale }] }]}>
+                  {wordCountdown}
+                </Animated.Text>
+              </View>
+              <Text style={styles.countdownLabel}>Get ready...</Text>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
+    );
+  };
+
   // DRAWING SCREEN
   const renderDrawing = () => (
     <SafeAreaView style={styles.container}>
       {/* Word Modal */}
-      <Modal visible={showWord} transparent animationType="fade">
-        <View style={styles.wordModal}>
-          <View style={styles.wordCard}>
-            <Text style={styles.wordCardTeam}>{teamColors[currentTeam]} Team {teamNames[currentTeam]}</Text>
-            <Text style={styles.wordCardLabel}>Your word is:</Text>
-            <Text style={styles.wordCardWord}>{currentWord.toUpperCase()}</Text>
-            <Text style={styles.wordCardHint}>🤫 Don't say it! Starting in 3s...</Text>
-          </View>
-        </View>
-      </Modal>
+      <WordRevealModal />
 
       {/* Header with Timer */}
       <View style={styles.drawingHeader}>
@@ -726,12 +811,17 @@ const styles = StyleSheet.create({
   skipBtnText: { fontSize: 24 },
 
   // Word Modal
-  wordModal: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' },
-  wordCard: { backgroundColor: '#fff', padding: 40, borderRadius: 30, alignItems: 'center', margin: 20, width: '85%' },
-  wordCardTeam: { fontSize: 16, fontWeight: '600', color: '#6B4EE6', marginBottom: 8 },
-  wordCardLabel: { fontSize: 18, color: '#666', marginBottom: 12 },
-  wordCardWord: { fontSize: 42, fontWeight: 'bold', color: '#FF6B6B', marginBottom: 20, textAlign: 'center' },
-  wordCardHint: { fontSize: 14, color: '#999', textAlign: 'center' },
+  wordModal: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  wordCard: { backgroundColor: '#fff', padding: 32, borderRadius: 32, alignItems: 'center', margin: 20, width: '88%', shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 24, elevation: 16 },
+  wordTeamBadge: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, marginBottom: 20 },
+  wordTeamBadgeText: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
+  wordCardLabel: { fontSize: 16, color: '#888', marginBottom: 8 },
+  wordCardWord: { fontSize: 46, fontWeight: 'bold', color: '#FF6B6B', marginBottom: 24, textAlign: 'center' },
+  wordCardHint: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 16 },
+  countdownContainer: { alignItems: 'center', marginTop: 8 },
+  countdownCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#6B4EE6', justifyContent: 'center', alignItems: 'center', marginBottom: 12, shadowColor: '#6B4EE6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12 },
+  countdownNumber: { fontSize: 42, fontWeight: 'bold', color: '#fff' },
+  countdownLabel: { fontSize: 14, color: '#aaa', fontStyle: 'italic' },
 
   // Reveal
   revealContent: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
