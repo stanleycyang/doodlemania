@@ -117,3 +117,203 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--purple-deep);
 }
+
+/* ==================== MOBILE RESPONSIVE ==================== */
+
+/* Tablet and below */
+@media (max-width: 1024px) {
+  .hero-content {
+    flex-direction: column !important;
+    text-align: center !important;
+    padding: 30px !important;
+    gap: 40px !important;
+  }
+  
+  .hero-text {
+    max-width: 100% !important;
+    align-items: center !important;
+  }
+  
+  .hero-stats {
+    justify-content: center !important;
+  }
+  
+  .hero-cta {
+    justify-content: center !important;
+  }
+}
+
+/* Mobile devices */
+@media (max-width: 768px) {
+  /* Navigation */
+  .nav {
+    padding: 15px 20px !important;
+  }
+  
+  .nav-links {
+    display: none !important;
+  }
+  
+  .nav-text {
+    font-size: 20px !important;
+  }
+  
+  /* Hero section */
+  .hero-content {
+    flex-direction: column !important;
+    padding: 20px !important;
+    gap: 30px !important;
+  }
+  
+  .hero-text {
+    order: 1 !important;
+  }
+  
+  .hero-phone {
+    order: 2 !important;
+  }
+  
+  /* Title sizes */
+  .title-line {
+    font-size: 48px !important;
+  }
+  
+  .hero-subtitle {
+    font-size: 16px !important;
+    padding: 0 10px !important;
+  }
+  
+  .hero-tagline {
+    font-size: 14px !important;
+    padding: 6px 14px !important;
+  }
+  
+  /* Phone mockup */
+  .phone-frame {
+    width: 220px !important;
+    height: 460px !important;
+  }
+  
+  /* CTA buttons */
+  .hero-cta {
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+  }
+  
+  .store-btn {
+    width: 100% !important;
+    max-width: 280px !important;
+    justify-content: center !important;
+  }
+  
+  /* Stats */
+  .hero-stats {
+    flex-wrap: wrap !important;
+    gap: 20px !important;
+    justify-content: center !important;
+  }
+  
+  /* Section headers */
+  .section-title {
+    font-size: 32px !important;
+  }
+  
+  .section-subtitle {
+    font-size: 16px !important;
+    padding: 0 20px !important;
+  }
+  
+  .section-emoji {
+    font-size: 40px !important;
+  }
+  
+  /* Features */
+  .features-section {
+    padding: 60px 20px !important;
+  }
+  
+  .feature-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+  
+  /* How to play steps */
+  .steps-container {
+    flex-direction: column !important;
+    gap: 20px !important;
+  }
+  
+  .step-arrow {
+    display: none !important;
+  }
+  
+  .how-to-play-section {
+    padding: 60px 20px !important;
+  }
+  
+  /* Game modes */
+  .modes-grid {
+    flex-direction: column !important;
+  }
+  
+  .vs-circle {
+    margin: 10px 0 !important;
+  }
+  
+  .game-modes-section {
+    padding: 60px 20px !important;
+  }
+  
+  .mode-card {
+    max-width: 100% !important;
+  }
+  
+  /* Testimonials */
+  .testimonials {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  
+  .testimonial {
+    max-width: 100% !important;
+  }
+  
+  .social-section {
+    padding: 60px 20px !important;
+  }
+  
+  /* Download section */
+  .download-section {
+    padding: 60px 20px !important;
+  }
+  
+  .download-title {
+    font-size: 32px !important;
+  }
+  
+  .download-buttons {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  
+  /* Footer */
+  .footer {
+    padding: 40px 20px !important;
+  }
+  
+  .footer-links {
+    flex-direction: column !important;
+    gap: 15px !important;
+  }
+  
+  /* Scroll indicator */
+  .scroll-indicator {
+    display: none !important;
+  }
+  
+  /* Blobs - reduce on mobile */
+  .blob {
+    transform: scale(0.5) !important;
+  }
+}

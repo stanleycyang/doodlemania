@@ -46,43 +46,43 @@ export default function Home() {
       {/* Hero Section */}
       <header style={styles.hero}>
         <div style={styles.heroBackground}>
-          <div style={styles.blob1} />
-          <div style={styles.blob2} />
-          <div style={styles.blob3} />
+          <div style={styles.blob1} className="blob" />
+          <div style={styles.blob2} className="blob" />
+          <div style={styles.blob3} className="blob" />
         </div>
         
-        <nav style={styles.nav}>
+        <nav style={styles.nav} className="nav">
           <div style={styles.navLogo}>
             <span style={styles.navEmoji}>🎨</span>
-            <span style={styles.navText}>DoodleMania</span>
+            <span style={styles.navText} className="nav-text">DoodleMania</span>
           </div>
-          <div style={styles.navLinks}>
+          <div style={styles.navLinks} className="nav-links">
             <Link href="#features" style={styles.navLink}>Features</Link>
             <Link href="#how-to-play" style={styles.navLink}>How to Play</Link>
             <Link href="#download" style={styles.downloadBtnSmall}>Download</Link>
           </div>
         </nav>
 
-        <div style={styles.heroContent}>
-          <div style={styles.heroText}>
-            <div style={styles.heroTagline}>
+        <div style={styles.heroContent} className="hero-content">
+          <div style={styles.heroText} className="hero-text">
+            <div style={styles.heroTagline} className="hero-tagline">
               <span style={styles.heroTaglineEmoji}>🎉</span>
               <span>The #1 Party Drawing Game</span>
             </div>
             
             <h1 style={styles.heroTitle}>
-              <span style={styles.titleLine1}>Draw.</span>
-              <span style={styles.titleLine2}>Guess.</span>
-              <span style={styles.titleLine3}>Win!</span>
+              <span style={styles.titleLine1} className="title-line">Draw.</span>
+              <span style={styles.titleLine2} className="title-line">Guess.</span>
+              <span style={styles.titleLine3} className="title-line">Win!</span>
             </h1>
             
-            <p style={styles.heroSubtitle}>
+            <p style={styles.heroSubtitle} className="hero-subtitle">
               Turn any gathering into an unforgettable game night! 
               Challenge friends in real-time multiplayer or pass-and-play party mode.
             </p>
 
-            <div style={styles.heroCTA}>
-              <a href="https://apps.apple.com/app/doodlemania" style={styles.appStoreBtn}>
+            <div style={styles.heroCTA} className="hero-cta">
+              <a href="https://apps.apple.com/app/doodlemania" style={styles.appStoreBtn} className="store-btn">
                 <svg style={styles.storeIcon} viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                 </svg>
@@ -91,7 +91,7 @@ export default function Home() {
                   <div style={styles.storeBig}>App Store</div>
                 </div>
               </a>
-              <a href="https://play.google.com/store/apps/details?id=com.stanleycyang.pictionaryparty" style={styles.playStoreBtn}>
+              <a href="https://play.google.com/store/apps/details?id=com.stanleycyang.pictionaryparty" style={styles.playStoreBtn} className="store-btn">
                 <svg style={styles.storeIcon} viewBox="0 0 24 24" fill="currentColor">
                   <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.5,12.92 20.16,13.19L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
                 </svg>
@@ -102,7 +102,7 @@ export default function Home() {
               </a>
             </div>
 
-            <div style={styles.heroStats}>
+            <div style={styles.heroStats} className="hero-stats">
               <div style={styles.stat}>
                 <span style={styles.statNumber}>🎮</span>
                 <span style={styles.statLabel}>2 Game Modes</span>
@@ -118,8 +118,8 @@ export default function Home() {
             </div>
           </div>
 
-          <div style={styles.heroPhone}>
-            <div style={styles.phoneFrame}>
+          <div style={styles.heroPhone} className="hero-phone">
+            <div style={styles.phoneFrame} className="phone-frame">
               <div style={styles.phoneNotch} />
               <div style={styles.phoneScreen}>
                 <div style={styles.mockupApp}>
@@ -136,21 +136,21 @@ export default function Home() {
           </div>
         </div>
 
-        <div style={styles.scrollIndicator}>
+        <div style={styles.scrollIndicator} className="scroll-indicator">
           <span style={styles.scrollText}>Scroll to explore</span>
           <span style={styles.scrollArrow}>↓</span>
         </div>
       </header>
 
       {/* Features Section */}
-      <section id="features" style={styles.features}>
+      <section id="features" style={styles.features} className="features-section">
         <div style={styles.sectionHeader}>
-          <span style={styles.sectionEmoji}>✨</span>
-          <h2 style={styles.sectionTitle}>Why You&apos;ll Love It</h2>
-          <p style={styles.sectionSubtitle}>Everything you need for the perfect game night</p>
+          <span style={styles.sectionEmoji} className="section-emoji">✨</span>
+          <h2 style={styles.sectionTitle} className="section-title">Why You&apos;ll Love It</h2>
+          <p style={styles.sectionSubtitle} className="section-subtitle">Everything you need for the perfect game night</p>
         </div>
 
-        <div style={styles.featureGrid}>
+        <div style={styles.featureGrid} className="feature-grid">
           <div style={{...styles.featureCard, ...styles.featureCard1}}>
             <div style={styles.featureIcon}>🌍</div>
             <h3 style={styles.featureTitle}>Play Anywhere</h3>
@@ -190,16 +190,16 @@ export default function Home() {
       </section>
 
       {/* How to Play Section */}
-      <section id="how-to-play" style={styles.howToPlay}>
+      <section id="how-to-play" style={styles.howToPlay} className="how-to-play-section">
         <div style={styles.howToPlayBg} />
         
         <div style={styles.sectionHeader}>
-          <span style={styles.sectionEmoji}>🎯</span>
-          <h2 style={{...styles.sectionTitle, color: '#fff'}}>How to Play</h2>
-          <p style={{...styles.sectionSubtitle, color: 'rgba(255,255,255,0.8)'}}>Three simple steps to fun</p>
+          <span style={styles.sectionEmoji} className="section-emoji">🎯</span>
+          <h2 style={{...styles.sectionTitle, color: '#fff'}} className="section-title">How to Play</h2>
+          <p style={{...styles.sectionSubtitle, color: 'rgba(255,255,255,0.8)'}} className="section-subtitle">Three simple steps to fun</p>
         </div>
 
-        <div style={styles.stepsContainer}>
+        <div style={styles.stepsContainer} className="steps-container">
           <div style={styles.step}>
             <div style={styles.stepNumber}>1</div>
             <div style={styles.stepIcon}>✏️</div>
@@ -207,7 +207,7 @@ export default function Home() {
             <p style={styles.stepDesc}>One player sees the secret word and draws it on the canvas</p>
           </div>
 
-          <div style={styles.stepArrow}>→</div>
+          <div style={styles.stepArrow} className="step-arrow">→</div>
 
           <div style={styles.step}>
             <div style={styles.stepNumber}>2</div>
@@ -216,7 +216,7 @@ export default function Home() {
             <p style={styles.stepDesc}>Teammates race to guess the word before time runs out</p>
           </div>
 
-          <div style={styles.stepArrow}>→</div>
+          <div style={styles.stepArrow} className="step-arrow">→</div>
 
           <div style={styles.step}>
             <div style={styles.stepNumber}>3</div>
@@ -228,15 +228,15 @@ export default function Home() {
       </section>
 
       {/* Game Modes Section */}
-      <section style={styles.gameModes}>
+      <section style={styles.gameModes} className="game-modes-section">
         <div style={styles.sectionHeader}>
-          <span style={styles.sectionEmoji}>🎮</span>
-          <h2 style={styles.sectionTitle}>Two Ways to Play</h2>
-          <p style={styles.sectionSubtitle}>Choose your adventure</p>
+          <span style={styles.sectionEmoji} className="section-emoji">🎮</span>
+          <h2 style={styles.sectionTitle} className="section-title">Two Ways to Play</h2>
+          <p style={styles.sectionSubtitle} className="section-subtitle">Choose your adventure</p>
         </div>
 
-        <div style={styles.modesGrid}>
-          <div style={styles.modeCard}>
+        <div style={styles.modesGrid} className="modes-grid">
+          <div style={styles.modeCard} className="mode-card">
             <div style={styles.modeIconContainer}>
               <span style={styles.modeIcon}>🌐</span>
             </div>
@@ -251,11 +251,11 @@ export default function Home() {
             <div style={styles.modeBadge}>Up to 8 players</div>
           </div>
 
-          <div style={styles.vsCircle}>
+          <div style={styles.vsCircle} className="vs-circle">
             <span>VS</span>
           </div>
 
-          <div style={styles.modeCard}>
+          <div style={styles.modeCard} className="mode-card">
             <div style={{...styles.modeIconContainer, background: 'linear-gradient(135deg, #4ECDC4 0%, #2EAD9C 100%)'}}>
               <span style={styles.modeIcon}>📱</span>
             </div>
@@ -273,25 +273,25 @@ export default function Home() {
       </section>
 
       {/* Testimonials/Social Proof */}
-      <section style={styles.social}>
+      <section style={styles.social} className="social-section">
         <div style={styles.socialBg} />
         <div style={styles.sectionHeader}>
-          <span style={styles.sectionEmoji}>💬</span>
-          <h2 style={{...styles.sectionTitle, color: '#fff'}}>Players Love Us</h2>
+          <span style={styles.sectionEmoji} className="section-emoji">💬</span>
+          <h2 style={{...styles.sectionTitle, color: '#fff'}} className="section-title">Players Love Us</h2>
         </div>
 
-        <div style={styles.testimonials}>
-          <div style={styles.testimonial}>
+        <div style={styles.testimonials} className="testimonials">
+          <div style={styles.testimonial} className="testimonial">
             <div style={styles.testimonialStars}>⭐⭐⭐⭐⭐</div>
             <p style={styles.testimonialText}>&quot;Best party game ever! My family plays every weekend now.&quot;</p>
             <div style={styles.testimonialAuthor}>— Sarah M.</div>
           </div>
-          <div style={styles.testimonial}>
+          <div style={styles.testimonial} className="testimonial">
             <div style={styles.testimonialStars}>⭐⭐⭐⭐⭐</div>
             <p style={styles.testimonialText}>&quot;Finally a drawing game that actually works online with no lag!&quot;</p>
             <div style={styles.testimonialAuthor}>— Mike T.</div>
           </div>
-          <div style={styles.testimonial}>
+          <div style={styles.testimonial} className="testimonial">
             <div style={styles.testimonialStars}>⭐⭐⭐⭐⭐</div>
             <p style={styles.testimonialText}>&quot;So much fun! Even my kids who can&apos;t draw have a blast.&quot;</p>
             <div style={styles.testimonialAuthor}>— Jennifer K.</div>
@@ -300,13 +300,13 @@ export default function Home() {
       </section>
 
       {/* Download CTA Section */}
-      <section id="download" style={styles.downloadSection}>
+      <section id="download" style={styles.downloadSection} className="download-section">
         <div style={styles.downloadContent}>
           <span style={styles.downloadEmoji}>🚀</span>
-          <h2 style={styles.downloadTitle}>Ready to Doodle?</h2>
+          <h2 style={styles.downloadTitle} className="download-title">Ready to Doodle?</h2>
           <p style={styles.downloadSubtitle}>Download free and start playing in seconds!</p>
           
-          <div style={styles.downloadButtons}>
+          <div style={styles.downloadButtons} className="download-buttons">
             <a href="https://apps.apple.com/app/doodlemania" style={styles.downloadBtn}>
               <svg style={styles.storeIcon} viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
@@ -334,13 +334,13 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer style={styles.footer}>
+      <footer style={styles.footer} className="footer">
         <div style={styles.footerContent}>
           <div style={styles.footerBrand}>
             <span style={styles.footerLogo}>🎨</span>
             <span style={styles.footerName}>DoodleMania</span>
           </div>
-          <div style={styles.footerLinks}>
+          <div style={styles.footerLinks} className="footer-links">
             <Link href="/privacy" style={styles.footerLink}>Privacy Policy</Link>
             <Link href="/terms" style={styles.footerLink}>Terms of Service</Link>
             <Link href="/support" style={styles.footerLink}>Support</Link>

@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.stanleycyang.pictionaryparty",
-      "buildNumber": "1",
+      "buildNumber": "16",
       "infoPlist": {
         "CFBundleDisplayName": "DoodleMania",
         "ITSAppUsesNonExemptEncryption": false
@@ -27,7 +27,7 @@
         "backgroundColor": "#FFF5E6"
       },
       "package": "com.stanleycyang.pictionaryparty",
-      "versionCode": 1
+      "versionCode": 16
     },
     "web": {
       "favicon": "./assets/favicon.png"
