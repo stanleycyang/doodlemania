@@ -521,16 +521,21 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
   const menuAnim = useRef(new Animated.Value(0)).current;
   const scoreScale = useRef(new Animated.Value(1)).current;
 
+  // Menu animation effect - separate from timer cleanup
   useEffect(() => {
     if (gameState === 'menu') {
       Animated.spring(menuAnim, { toValue: 1, friction: 6, useNativeDriver: true }).start();
     }
+  }, [gameState]);
+
+  // Timer cleanup - only on unmount to avoid clearing timers during state transitions
+  useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (wordTimerRef.current) clearTimeout(wordTimerRef.current);
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [gameState]);
+  }, []);
 
   useEffect(() => {
     if (timeLeft <= 10 && timeLeft > 0 && gameState === 'drawing') {
