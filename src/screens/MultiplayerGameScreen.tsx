@@ -745,12 +745,12 @@ export const MultiplayerGameScreen: React.FC<MultiplayerGameScreenProps> = ({
           </View>
         </Animated.View>
 
-        {/* Word/Status Bar */}
+        {/* Word/Status Bar - word only shown to drawer (word is null for everyone else) */}
         <View style={styles.statusBar}>
           {isDrawing ? (
             <View style={styles.wordContainer}>
               <Text style={styles.wordLabel}>Draw:</Text>
-              <Text style={styles.word}>{word?.toUpperCase() || '???'}</Text>
+              <Text style={styles.word}>{word ? word.toUpperCase() : '???'}</Text>
             </View>
           ) : isGuessingTeam ? (
             <View style={styles.statusBarContent}>

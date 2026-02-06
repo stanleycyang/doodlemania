@@ -443,73 +443,55 @@ export const useMultiplayer = () => {
         });
         break;
         
-      case 'correct_guess':
-        // FIX: Fetch latest state to avoid stale closure
+      case 'correct_guess': {
+        // Always use latest state and numeric points so scores increment correctly
         const latestState = useGameStore.getState();
-        const guesser = latestState.players.find(p => p.id === event.player_id);
-        const guesserPoints = event.guesser_points || event.points || 0; // Default to 0 if not present
+        const guesserPoints = Number(event.guesser_points) || Number(event.points) || 0;
+        const drawerPoints = Number(event.drawer_points) || 0;
 
+        const guesser = latestState.players.find(p => p.id === event.player_id);
         if (guesser && guesserPoints > 0) {
           const newGuesserScore = guesser.score + guesserPoints;
           updatePlayer(guesser.id, { score: newGuesserScore });
-          // Also update currentPlayer if it's us
-          if (latestState.currentPlayer && latestState.currentPlayer.id === guesser.id) {
+          if (latestState.currentPlayer?.id === guesser.id) {
             setCurrentPlayer({ ...latestState.currentPlayer, score: newGuesserScore });
           }
         }
-        
-        // Update drawer's score (if different from guesser)
-        if (event.drawer_id && event.drawer_id !== event.player_id) {
-          const drawer = latestState.players.find(p => p.id === event.drawer_id);
-          const drawerPoints = event.drawer_points || 0; // Default to 0
 
-          if (drawer && drawerPoints > 0) {
-            const newDrawerScore = drawer.score + drawerPoints;
-            updatePlayer(drawer.id, { score: newDrawerScore });
-            // Also update currentPlayer if it's us
-            if (latestState.currentPlayer && latestState.currentPlayer.id === drawer.id) {
-              setCurrentPlayer({ ...latestState.currentPlayer, score: newDrawerScore });
-            }
+        const drawer = event.drawer_id ? latestState.players.find(p => p.id === event.drawer_id) : null;
+        if (drawer && drawerPoints > 0) {
+          const newDrawerScore = drawer.score + drawerPoints;
+          updatePlayer(drawer.id, { score: newDrawerScore });
+          if (latestState.currentPlayer?.id === drawer.id) {
+            setCurrentPlayer({ ...latestState.currentPlayer, score: newDrawerScore });
           }
-        } else if (event.drawer_id === event.player_id && event.drawer_points > 0) {
-           // Case where drawer got points (e.g. manual verify) but it was sent as separate field
-           // Usually we handled it in guesser block if player_id was drawer
-           // But if manual mode sent guesser_points: 0, drawer_points: 1
-           const drawer = latestState.players.find(p => p.id === event.drawer_id);
-           if (drawer) {
-              const newDrawerScore = drawer.score + event.drawer_points;
-              updatePlayer(drawer.id, { score: newDrawerScore });
-              if (latestState.currentPlayer && latestState.currentPlayer.id === drawer.id) {
-                setCurrentPlayer({ ...latestState.currentPlayer, score: newDrawerScore });
-              }
-           }
         }
-        
-        // Mark message as correct guess
-        // FIX: Use the word from the event payload if available, or reveal stored word
-        const revealedWord = event.word || state.room?.current_word || "???";
+
+        // Mark message as correct guess; use word from event so all clients see it
+        const revealedWord = event.word || latestState.room?.current_word || '???';
 
         addMessage({
           id: `msg_${Date.now()}`,
-          room_id: state.room?.id || '',
+          room_id: latestState.room?.id || '',
           player_id: event.player_id,
           player_name: event.player_name,
           text: `🎉 Correct! The word was "${revealedWord}"`,
           is_correct_guess: true,
           timestamp: new Date().toISOString(),
         });
-        
+
         // Host triggers new round after a short delay
-        if (state.currentPlayer?.is_host) {
+        if (latestState.currentPlayer?.is_host) {
           setTimeout(() => {
             channelRef.current?.send({
               type: 'broadcast',
               event: 'room_event',
-              payload: { type: 'round_ended', round: state.room?.current_round },
+              payload: { type: 'round_ended', round: latestState.room?.current_round },
             });
-          }, 2000); // 2 second delay to show the correct answer
+          }, 2000);
         }
         break;
+      }
         
       case 'round_ended':
         if (state.room) {
@@ -555,12 +537,7 @@ export const useMultiplayer = () => {
                 .sort((a, b) => a.id.localeCompare(b.id)); // Sort by ID for deterministic order
 
               if (nextTeamPlayers.length > 0) {
-                // FIX: Round Robin selection
-                // Round 1 (Team 1) -> Index 0
-                // Round 2 (Team 2) -> Index 0
-                // Round 3 (Team 1) -> Index 1
-                // Round 4 (Team 2) -> Index 1
-                // Formula: floor((round - 1) / 2) % length
+                // Drawer rotates through the team (round-robin), not random
                 const playerIndex = Math.floor((nextRound - 1) / 2) % nextTeamPlayers.length;
                 const nextDrawer = nextTeamPlayers[playerIndex];
                 

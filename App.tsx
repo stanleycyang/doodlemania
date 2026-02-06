@@ -15,26 +15,19 @@ import {
 import Svg, { Path } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { MultiplayerApp } from './src/App.multiplayer';
+import { WORDS } from './src/lib/words';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CANVAS_SIZE = Math.min(SCREEN_WIDTH - 32, 380);
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CANVAS_SIZE = SCREEN_WIDTH - 32;
 
 type AppMode = 'select' | 'multiplayer' | 'local';
 
-const WORD_CATEGORIES = {
-  easy: ['cat', 'dog', 'sun', 'tree', 'house', 'car', 'ball', 'star', 'fish', 'bird', 'hat', 'book', 'phone', 'cup', 'bed'],
-  animals: ['elephant', 'giraffe', 'penguin', 'dolphin', 'butterfly', 'kangaroo', 'octopus', 'peacock', 'turtle', 'zebra', 'lion', 'monkey'],
-  food: ['pizza', 'ice cream', 'hamburger', 'spaghetti', 'cupcake', 'taco', 'sushi', 'popcorn', 'sandwich', 'donut', 'cookie', 'banana'],
-  actions: ['dancing', 'sleeping', 'running', 'jumping', 'swimming', 'flying', 'cooking', 'singing', 'laughing', 'crying', 'reading', 'painting'],
-  objects: ['umbrella', 'guitar', 'camera', 'bicycle', 'airplane', 'rocket', 'balloon', 'present', 'candle', 'crown', 'glasses', 'watch'],
-  places: ['beach', 'mountain', 'castle', 'jungle', 'space', 'desert', 'city', 'farm', 'hospital', 'school', 'restaurant', 'park'],
-  hard: ['electricity', 'jealousy', 'democracy', 'imagination', 'confusion', 'celebration', 'adventure', 'nightmare', 'freedom', 'mystery'],
-};
-
+// Use shared Pictionary-style drawable words
 const DIFFICULTY_WORDS = {
-  easy: [...WORD_CATEGORIES.easy, ...WORD_CATEGORIES.animals, ...WORD_CATEGORIES.food],
-  medium: [...WORD_CATEGORIES.actions, ...WORD_CATEGORIES.objects, ...WORD_CATEGORIES.places],
-  hard: [...WORD_CATEGORIES.hard, ...WORD_CATEGORIES.actions],
+  easy: WORDS.easy,
+  medium: WORDS.medium,
+  hard: WORDS.hard,
+  mixed: [...WORDS.easy, ...WORDS.medium, ...WORDS.hard],
 };
 
 const COLORS = ['#000000', '#FFFFFF', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFE66D', '#DDA0DD', '#FF69B4', '#FFA500'];
@@ -538,7 +531,8 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const wordTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
-  
+  const usedWordsRef = useRef<Set<string>>(new Set());
+
   // Animations
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const timerPulse = useRef(new Animated.Value(1)).current;
@@ -578,7 +572,12 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
     } else {
       wordPool = DIFFICULTY_WORDS[settings.difficulty];
     }
-    return wordPool[Math.floor(Math.random() * wordPool.length)];
+    const available = wordPool.filter(w => !usedWordsRef.current.has(w.toLowerCase().trim()));
+    const pool = available.length > 0 ? available : wordPool;
+    if (available.length === 0) usedWordsRef.current.clear();
+    const word = pool[Math.floor(Math.random() * pool.length)];
+    usedWordsRef.current.add(word.toLowerCase().trim());
+    return word;
   }, [settings.difficulty]);
 
   const teamColors = ['🔵', '🔴', '🟢', '🟡'];
@@ -687,6 +686,7 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
   }, []);
 
   const resetGame = useCallback(() => {
+    usedWordsRef.current.clear();
     setScores(Array(settings.teamCount).fill(0));
     setCurrentTeam(0);
     setRoundNumber(1);
@@ -858,7 +858,7 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
 
   // Word Reveal Modal - uses key prop to force remount on each show
 
-  // DRAWING SCREEN
+  // DRAWING SCREEN - Same layout as MultiplayerGameScreen
   const renderDrawing = () => (
     <SafeAreaView style={styles.container}>
       {/* Word Modal */}
@@ -872,18 +872,40 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
         countdown={wordCountdown}
       />
 
-      {/* Header with Timer */}
+      {/* Header - match multiplayer: back/round/timer */}
       <View style={styles.drawingHeader}>
-        <View style={[styles.teamBadge, { backgroundColor: teamBgColors[currentTeam] }]}>
-          <Text style={styles.teamBadgeText}>{teamColors[currentTeam]} {teamNames[currentTeam]}</Text>
+        <TouchableOpacity style={styles.leaveGameButton} onPress={onBack}>
+          <Text style={styles.leaveGameText}>✕</Text>
+        </TouchableOpacity>
+        <View style={styles.roundIndicator}>
+          <Text style={styles.roundText}>Round {roundNumber}</Text>
         </View>
         <Animated.View style={[styles.timerBadge, timeLeft <= 10 && styles.timerDanger, { transform: [{ scale: timerPulse }] }]}>
           <Text style={[styles.timerText, timeLeft <= 10 && styles.timerTextDanger]}>⏱️ {timeLeft}s</Text>
         </Animated.View>
       </View>
 
-      {/* Canvas */}
-      <View style={styles.canvasWrapper}>
+      {/* Score Bar - match multiplayer */}
+      <Animated.View style={[styles.scoreBar, { transform: [{ scale: scoreScale }] }]}>
+        {scores.slice(0, settings.teamCount).map((score, index) => (
+          <View key={index} style={[styles.teamScoreBox, { backgroundColor: `${teamBgColors[index]}40` }]}>
+            <Text style={styles.teamScoreEmoji}>{teamColors[index]}</Text>
+            <Text style={styles.teamScoreValue}>{score}</Text>
+          </View>
+        ))}
+        {settings.teamCount === 2 && <Text style={styles.vsText}>VS</Text>}
+      </Animated.View>
+
+      {/* Status Bar - match multiplayer word/status area */}
+      <View style={styles.statusBar}>
+        <View style={styles.wordContainer}>
+          <Text style={styles.wordLabel}>Draw:</Text>
+          <Text style={styles.word}>{currentWord ? currentWord.toUpperCase() : '???'}</Text>
+        </View>
+      </View>
+
+      {/* Canvas - same size and style as multiplayer */}
+      <View style={styles.canvasContainer}>
         <View 
           style={styles.canvas}
           onStartShouldSetResponder={() => true}
@@ -903,20 +925,23 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
         </View>
       </View>
 
-      {/* Drawing Tools */}
+      {/* Drawing Tools - match multiplayer layout */}
       <View style={styles.toolsContainer}>
-        {/* Colors */}
-        <View style={styles.colorRow}>
+        <View style={styles.toolsRow}>
           {COLORS.map((color) => (
             <TouchableOpacity
               key={color}
-              style={[styles.colorDot, { backgroundColor: color }, color === '#FFFFFF' && styles.colorDotWhite, selectedColor === color && styles.colorDotSelected]}
+              style={[styles.colorButton, { backgroundColor: color }, color === '#FFFFFF' && styles.colorButtonWhite, selectedColor === color && styles.colorButtonSelected]}
               onPress={() => { setSelectedColor(color); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
             />
           ))}
+          <TouchableOpacity style={styles.actionButton} onPress={undoLast}>
+            <Text style={styles.actionButtonText}>↩️</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.actionButton, styles.clearButton]} onPress={clearCanvas}>
+            <Text style={styles.actionButtonText}>🗑️</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Brush Sizes */}
         <View style={styles.brushRow}>
           {BRUSH_SIZES.map((size) => (
             <TouchableOpacity
@@ -928,20 +953,12 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
             </TouchableOpacity>
           ))}
         </View>
-
-        {/* Actions */}
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionBtn} onPress={undoLast}>
-            <Text style={styles.actionBtnText}>↩️</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.clearBtn]} onPress={clearCanvas}>
-            <Text style={styles.actionBtnText}>🗑️</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.correctBtn} onPress={handleGuessCorrect}>
             <Text style={styles.correctBtnText}>✅ They Got It!</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-            <Text style={styles.skipBtnText}>⏭️</Text>
+            <Text style={styles.skipBtnText}>⏭️ Skip</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1029,37 +1046,51 @@ const styles = StyleSheet.create({
   optionPillText: { fontSize: 16, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
   optionPillTextActive: { color: '#fff' },
 
-  // Drawing
-  drawingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
-  teamBadge: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 },
-  teamBadgeText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  timerBadge: { backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20 },
+  // Drawing - match MultiplayerGameScreen layout
+  drawingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8 },
+  leaveGameButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  leaveGameText: { fontSize: 18, color: '#fff', fontWeight: 'bold' },
+  roundIndicator: { backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 16 },
+  roundText: { fontSize: 14, fontWeight: 'bold', color: '#FFE66D' },
+  timerBadge: { backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   timerDanger: { backgroundColor: 'rgba(255,107,107,0.5)' },
   timerText: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
   timerTextDanger: { color: '#FF6B6B' },
 
-  canvasWrapper: { alignItems: 'center', paddingHorizontal: 16 },
-  canvas: { width: CANVAS_SIZE, height: CANVAS_SIZE, backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 8 },
+  scoreBar: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 8, gap: 12 },
+  teamScoreBox: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16 },
+  team1ScoreBox: { backgroundColor: 'rgba(78, 205, 196, 0.3)' },
+  team2ScoreBox: { backgroundColor: 'rgba(255, 107, 107, 0.3)' },
+  teamScoreEmoji: { fontSize: 20 },
+  teamScoreValue: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  vsText: { fontSize: 16, fontWeight: 'bold', color: 'rgba(255,255,255,0.5)' },
 
-  toolsContainer: { padding: 16, gap: 12 },
-  colorRow: { flexDirection: 'row', justifyContent: 'center', gap: 8, flexWrap: 'wrap' },
-  colorDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: 'transparent' },
-  colorDotWhite: { borderColor: 'rgba(255,255,255,0.5)' },
-  colorDotSelected: { borderColor: '#FFE66D', borderWidth: 3, transform: [{ scale: 1.15 }] },
+  statusBar: { backgroundColor: 'rgba(0,0,0,0.2)', padding: 12, alignItems: 'center', marginHorizontal: 16, borderRadius: 12, marginBottom: 8 },
+  wordContainer: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  wordLabel: { fontSize: 18, color: 'rgba(255,255,255,0.8)', fontWeight: '600' },
+  word: { fontSize: 28, fontWeight: 'bold', color: '#FFE66D', letterSpacing: 2 },
 
+  canvasContainer: { paddingHorizontal: 16, alignItems: 'center' },
+  canvas: { width: CANVAS_SIZE, height: CANVAS_SIZE, backgroundColor: '#fff', borderRadius: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
+
+  toolsContainer: { paddingHorizontal: 16, paddingVertical: 10, gap: 10 },
+  toolsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
+  colorButton: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: 'transparent' },
+  colorButtonWhite: { borderColor: 'rgba(255,255,255,0.5)' },
+  colorButtonSelected: { borderColor: '#FFE66D', borderWidth: 3 },
+  actionButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  actionButtonText: { fontSize: 18 },
+  clearButton: { backgroundColor: 'rgba(255,107,107,0.4)' },
   brushRow: { flexDirection: 'row', justifyContent: 'center', gap: 14 },
   brushDot: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
   brushDotSelected: { backgroundColor: 'rgba(255,230,109,0.4)', borderWidth: 2, borderColor: '#FFE66D' },
   brushPreview: { borderRadius: 100 },
 
-  actionRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
-  actionBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  clearBtn: { backgroundColor: 'rgba(255,107,107,0.4)' },
-  actionBtnText: { fontSize: 24 },
-  correctBtn: { backgroundColor: '#4ECDC4', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 20 },
+  actionRow: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
+  correctBtn: { backgroundColor: '#4ECDC4', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 },
   correctBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  skipBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,107,107,0.6)', justifyContent: 'center', alignItems: 'center' },
-  skipBtnText: { fontSize: 24 },
+  skipBtn: { backgroundColor: 'rgba(255,107,107,0.7)', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 20 },
+  skipBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 
   // Reveal
   revealContent: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
