@@ -4,6 +4,7 @@ import { supabase, generateRoomCode, generatePlayerId, isSupabaseConfigured } fr
 import { useGameStore } from '../lib/gameStore';
 import { Player, Room, RoomSettings, DrawingEvent, RoomEvent, ChatMessage, DrawingPath } from '../types/multiplayer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { WORDS } from '../lib/words';
 
 // Storage keys for session persistence
 const STORAGE_KEYS = {
@@ -60,13 +61,6 @@ export const getSavedSession = async (): Promise<{ roomCode: string; playerName:
     console.error('Failed to get saved session:', e);
     return null;
   }
-};
-
-// Word lists by difficulty
-const WORDS = {
-  easy: ['cat', 'dog', 'sun', 'tree', 'house', 'car', 'ball', 'star', 'fish', 'bird', 'hat', 'book', 'cup', 'bed', 'moon'],
-  medium: ['elephant', 'guitar', 'pizza', 'rocket', 'beach', 'castle', 'robot', 'dragon', 'unicorn', 'rainbow', 'volcano', 'submarine'],
-  hard: ['democracy', 'imagination', 'confusion', 'celebration', 'adventure', 'nightmare', 'electricity', 'jealousy', 'mystery', 'freedom'],
 };
 
 export const useMultiplayer = () => {
@@ -331,6 +325,7 @@ export const useMultiplayer = () => {
 
   // Handle room events
   const handleRoomEvent = useCallback((event: any, channel?: RealtimeChannel) => {
+    // Always get fresh state
     const state = useGameStore.getState();
     
     switch (event.type) {
@@ -390,9 +385,9 @@ export const useMultiplayer = () => {
         if (event.drawer_id) {
           updatePlayer(event.drawer_id, { is_drawing: true });
           // Update currentPlayer if it's us
-          if (state.currentPlayer?.id === event.drawer_id) {
+          if (state.currentPlayer && state.currentPlayer.id === event.drawer_id) {
             setCurrentPlayer({ ...state.currentPlayer, is_drawing: true });
-          } else if (state.currentPlayer?.is_drawing) {
+          } else if (state.currentPlayer?.is_drawing && state.currentPlayer) {
             setCurrentPlayer({ ...state.currentPlayer, is_drawing: false });
           }
         }
@@ -415,11 +410,15 @@ export const useMultiplayer = () => {
           timestamp: new Date().toISOString(),
         });
         
+        // FIX: Only store the word if we are the drawer
+        const isDrawer = state.currentPlayer?.id === event.drawer_id;
+        const roundWord = isDrawer ? (event.word || null) : null;
+
         setRoom(state.room ? { 
           ...state.room, 
           current_round: event.round, 
           drawing_team: event.drawing_team,
-          current_word: event.word || null,
+          current_word: roundWord,
           round_start_time: new Date().toISOString(),
           status: 'playing',
         } : null);
@@ -428,10 +427,13 @@ export const useMultiplayer = () => {
       case 'new_word':
         // Word selected by drawer, update room state (word is hidden from guessers)
         if (state.room) {
-          setRoom({ 
-            ...state.room, 
-            current_word: event.word,
-          });
+          // FIX: Only store the word if we are the drawer
+          if (state.currentPlayer?.is_drawing) {
+            setRoom({
+              ...state.room,
+              current_word: event.word,
+            });
+          }
         }
         break;
         
@@ -442,39 +444,57 @@ export const useMultiplayer = () => {
         break;
         
       case 'correct_guess':
-        // Update guesser's score
-        const guesser = state.players.find(p => p.id === event.player_id);
-        const guesserPoints = event.guesser_points || event.points || 1;
-        if (guesser) {
+        // FIX: Fetch latest state to avoid stale closure
+        const latestState = useGameStore.getState();
+        const guesser = latestState.players.find(p => p.id === event.player_id);
+        const guesserPoints = event.guesser_points || event.points || 0; // Default to 0 if not present
+
+        if (guesser && guesserPoints > 0) {
           const newGuesserScore = guesser.score + guesserPoints;
           updatePlayer(guesser.id, { score: newGuesserScore });
           // Also update currentPlayer if it's us
-          if (state.currentPlayer?.id === guesser.id) {
-            setCurrentPlayer({ ...state.currentPlayer, score: newGuesserScore });
+          if (latestState.currentPlayer && latestState.currentPlayer.id === guesser.id) {
+            setCurrentPlayer({ ...latestState.currentPlayer, score: newGuesserScore });
           }
         }
         
         // Update drawer's score (if different from guesser)
         if (event.drawer_id && event.drawer_id !== event.player_id) {
-          const drawer = state.players.find(p => p.id === event.drawer_id);
-          const drawerPoints = event.drawer_points || 1;
-          if (drawer) {
+          const drawer = latestState.players.find(p => p.id === event.drawer_id);
+          const drawerPoints = event.drawer_points || 0; // Default to 0
+
+          if (drawer && drawerPoints > 0) {
             const newDrawerScore = drawer.score + drawerPoints;
             updatePlayer(drawer.id, { score: newDrawerScore });
             // Also update currentPlayer if it's us
-            if (state.currentPlayer?.id === drawer.id) {
-              setCurrentPlayer({ ...state.currentPlayer, score: newDrawerScore });
+            if (latestState.currentPlayer && latestState.currentPlayer.id === drawer.id) {
+              setCurrentPlayer({ ...latestState.currentPlayer, score: newDrawerScore });
             }
           }
+        } else if (event.drawer_id === event.player_id && event.drawer_points > 0) {
+           // Case where drawer got points (e.g. manual verify) but it was sent as separate field
+           // Usually we handled it in guesser block if player_id was drawer
+           // But if manual mode sent guesser_points: 0, drawer_points: 1
+           const drawer = latestState.players.find(p => p.id === event.drawer_id);
+           if (drawer) {
+              const newDrawerScore = drawer.score + event.drawer_points;
+              updatePlayer(drawer.id, { score: newDrawerScore });
+              if (latestState.currentPlayer && latestState.currentPlayer.id === drawer.id) {
+                setCurrentPlayer({ ...latestState.currentPlayer, score: newDrawerScore });
+              }
+           }
         }
         
         // Mark message as correct guess
+        // FIX: Use the word from the event payload if available, or reveal stored word
+        const revealedWord = event.word || state.room?.current_word || "???";
+
         addMessage({
           id: `msg_${Date.now()}`,
           room_id: state.room?.id || '',
           player_id: event.player_id,
           player_name: event.player_name,
-          text: `🎉 Correct! The word was "${state.room?.current_word}"`,
+          text: `🎉 Correct! The word was "${revealedWord}"`,
           is_correct_guess: true,
           timestamp: new Date().toISOString(),
         });
@@ -530,10 +550,19 @@ export const useMultiplayer = () => {
           if (state.currentPlayer?.is_host) {
             setTimeout(() => {
               // Get players from next drawing team
-              const nextTeamPlayers = state.players.filter(p => p.team === nextDrawingTeam);
+              const nextTeamPlayers = state.players
+                .filter(p => p.team === nextDrawingTeam)
+                .sort((a, b) => a.id.localeCompare(b.id)); // Sort by ID for deterministic order
+
               if (nextTeamPlayers.length > 0) {
-                // Pick a random drawer from the team (or rotate through players)
-                const nextDrawer = nextTeamPlayers[Math.floor(Math.random() * nextTeamPlayers.length)];
+                // FIX: Round Robin selection
+                // Round 1 (Team 1) -> Index 0
+                // Round 2 (Team 2) -> Index 0
+                // Round 3 (Team 1) -> Index 1
+                // Round 4 (Team 2) -> Index 1
+                // Formula: floor((round - 1) / 2) % length
+                const playerIndex = Math.floor((nextRound - 1) / 2) % nextTeamPlayers.length;
+                const nextDrawer = nextTeamPlayers[playerIndex];
                 
                 // Pick a word that hasn't been used yet
                 const difficulty = state.room?.settings.difficulty || 'medium';
@@ -595,7 +624,7 @@ export const useMultiplayer = () => {
           room_id: state.room?.id || '',
           player_id: 'system',
           player_name: 'System',
-          text: `⏭️ Word skipped! It was "${event.word}"`,
+          text: `⏭️ Word skipped! It was "${event.word || state.room?.current_word}"`,
           is_correct_guess: false,
           timestamp: new Date().toISOString(),
         });
@@ -607,8 +636,9 @@ export const useMultiplayer = () => {
           addMessage(event.message);
         }
         
-        // Check if this is a correct guess (only host validates)
-        if (state.currentPlayer?.is_host && state.room?.current_word) {
+        // Check if this is a correct guess (FIX: Only DRAWER validates)
+        // Only the drawer knows the word and can validate
+        if (state.currentPlayer?.is_drawing && state.room?.current_word) {
           // Find the player who sent the message
           const guessingPlayer = state.players.find(p => p.id === event.message.player_id);
           
@@ -638,6 +668,7 @@ export const useMultiplayer = () => {
                 guesser_points: guesserPoints,
                 drawer_id: currentDrawer?.id,
                 drawer_points: drawerPoints,
+                word: word, // Send word so everyone can see it
               },
             });
           }
@@ -772,9 +803,13 @@ export const useMultiplayer = () => {
     usedWordsRef.current.clear(); // Also reset word tracking
     
     // Pick first drawer from team 1
-    const team1Players = players.filter(p => p.team === 1);
+    const team1Players = players
+      .filter(p => p.team === 1)
+      .sort((a, b) => a.id.localeCompare(b.id));
+
     if (team1Players.length === 0) return; // Need at least one player on team 1
     
+    // Round Robin: Round 1 (Team 1) -> Index 0
     const firstDrawer = team1Players[0];
     
     // Pick a word
@@ -826,10 +861,11 @@ export const useMultiplayer = () => {
       type: 'correct_guess', 
       player_id: currentPlayer.id, // drawer gets the points for manual confirm
       player_name: currentPlayer.name,
-      guesser_points: drawerPoints, // Points go to the drawer
-      drawer_id: null, // No separate drawer points (avoid double-counting)
-      drawer_points: 0,
-      manual: true, // Flag to indicate manual confirmation
+      guesser_points: 0, // Manual confirm means we don't know who guessed, or it was verbal. Only drawer points.
+      drawer_id: currentPlayer.id,
+      drawer_points: drawerPoints,
+      word: room.current_word, // Send word to reveal
+      manual: true,
     });
   }, [currentPlayer, room, sendEvent]);
 
