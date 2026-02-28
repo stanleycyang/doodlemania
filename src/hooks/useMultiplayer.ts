@@ -421,6 +421,7 @@ export const useMultiplayer = () => {
           current_word: roundWord,
           round_start_time: new Date().toISOString(),
           status: 'playing',
+          ...(event.total_rounds ? { total_rounds: event.total_rounds } : {}),
         } : null);
         break;
         
@@ -866,6 +867,48 @@ export const useMultiplayer = () => {
     sendEvent({ type: 'round_ended', round: room.current_round });
   }, [currentPlayer, room, sendEvent, addMessage]);
 
+  // Start tiebreaker rounds (host only) - keeps scores, adds 2 extra rounds
+  const startTiebreaker = useCallback(() => {
+    if (!currentPlayer?.is_host || !room) return;
+    
+    clearMessages();
+    
+    const newTotalRounds = room.current_round + 2; // One round per team
+    
+    // Pick first drawer from team 1
+    const team1PlayersArr = players
+      .filter(p => p.team === 1)
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    if (team1PlayersArr.length === 0) return;
+    
+    const nextRound = room.current_round + 1;
+    const playerIndex = Math.floor((nextRound - 1) / 2) % team1PlayersArr.length;
+    const firstDrawer = team1PlayersArr[playerIndex];
+    
+    // Pick a word
+    const word = getRandomWord(room.settings.difficulty);
+    
+    // Update room with new total rounds and broadcast round start
+    const updatedRoom: Room = {
+      ...room,
+      total_rounds: newTotalRounds,
+      status: 'playing',
+    };
+    setRoom(updatedRoom);
+    
+    sendEvent({ 
+      type: 'round_started', 
+      round: nextRound, 
+      drawing_team: 1,
+      drawer_id: firstDrawer.id,
+      word,
+      total_rounds: newTotalRounds,
+    });
+    
+    useGameStore.getState().startGame();
+  }, [currentPlayer, room, players, sendEvent, getRandomWord, clearMessages, setRoom]);
+
   // Reset game for "play again" (host only)
   const resetForNewGame = useCallback(() => {
     if (!currentPlayer?.is_host || !room) return;
@@ -964,6 +1007,7 @@ export const useMultiplayer = () => {
     markCorrectGuess,
     skipWord,
     resetForNewGame,
+    startTiebreaker,
     
     // Communication
     sendEvent,

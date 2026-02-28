@@ -35,8 +35,8 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   const team1Players = players.filter(p => p.team === 1);
   const team2Players = players.filter(p => p.team === 2);
   const unassignedPlayers = players.filter(p => p.team === null);
-  const allReady = players.length >= 2 && players.every(p => p.is_ready);
-  const canStart = currentPlayer?.is_host && allReady && team1Players.length >= 1 && team2Players.length >= 1;
+  const allReady = players.length >= 4 && players.every(p => p.is_ready);
+  const canStart = currentPlayer?.is_host && allReady && team1Players.length >= 2 && team2Players.length >= 2;
 
   // Animations
   const headerAnim = useRef(new Animated.Value(0)).current;
@@ -330,7 +330,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
                   activeOpacity={0.9}
                 >
                   <Text style={styles.startButtonText}>
-                    {canStart ? '🎮 Start Game!' : 'Waiting for players...'}
+                    {canStart ? '🎮 Start Game!' : players.length < 4 ? 'Need 4+ players to start' : 'Need 2 players per team'}
                   </Text>
                 </TouchableOpacity>
               </Animated.View>

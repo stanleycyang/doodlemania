@@ -15,6 +15,7 @@ interface GameEndScreenProps {
   players: Player[];
   currentPlayer: Player | null;
   onPlayAgain: () => void;
+  onTiebreaker: () => void;
   onLeave: () => void;
 }
 
@@ -22,6 +23,7 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({
   players,
   currentPlayer,
   onPlayAgain,
+  onTiebreaker,
   onLeave,
 }) => {
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -123,7 +125,23 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({
 
         {/* Actions */}
         <View style={endStyles.actions}>
-          {currentPlayer?.is_host ? (
+          {isTie && currentPlayer?.is_host && (
+            <TouchableOpacity 
+              style={endStyles.tiebreakerButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                onTiebreaker();
+              }}
+            >
+              <Text style={endStyles.tiebreakerText}>⚡ Tiebreaker Round!</Text>
+            </TouchableOpacity>
+          )}
+          {isTie && !currentPlayer?.is_host && (
+            <View style={endStyles.waitingForHost}>
+              <Text style={endStyles.waitingText}>⏳ Waiting for host to start tiebreaker...</Text>
+            </View>
+          )}
+          {!isTie && currentPlayer?.is_host ? (
             <TouchableOpacity 
               style={endStyles.playAgainButton}
               onPress={() => {
@@ -133,11 +151,11 @@ const GameEndScreen: React.FC<GameEndScreenProps> = ({
             >
               <Text style={endStyles.playAgainText}>🎮 Play Again</Text>
             </TouchableOpacity>
-          ) : (
+          ) : !isTie && !currentPlayer?.is_host ? (
             <View style={endStyles.waitingForHost}>
               <Text style={endStyles.waitingText}>⏳ Waiting for host to start new game...</Text>
             </View>
-          )}
+          ) : null}
           <TouchableOpacity 
             style={endStyles.leaveButton}
             onPress={onLeave}
@@ -306,6 +324,22 @@ const endStyles = StyleSheet.create({
     color: '#FFE66D',
     fontWeight: '500',
   },
+  tiebreakerButton: {
+    backgroundColor: '#FF6B6B',
+    padding: 20,
+    borderRadius: 16,
+    alignItems: 'center',
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  tiebreakerText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
 });
 
 type Screen = 'home' | 'create' | 'join' | 'lobby' | 'game' | 'finished';
@@ -344,6 +378,7 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal, onB
     markCorrectGuess,
     skipWord,
     resetForNewGame,
+    startTiebreaker,
     sendEvent,
     sendDrawing,
     sendChat,
@@ -654,6 +689,12 @@ export const MultiplayerApp: React.FC<MultiplayerAppProps> = ({ onPlayLocal, onB
                 resetForNewGame();
               }
               transitionTo('lobby');
+            }}
+            onTiebreaker={() => {
+              if (currentPlayer?.is_host) {
+                startTiebreaker();
+              }
+              transitionTo('game');
             }}
             onLeave={() => {
               leaveRoom();

@@ -34,7 +34,7 @@ const COLORS = ['#000000', '#FFFFFF', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'
 const BRUSH_SIZES = [3, 6, 10, 16];
 const TIME_OPTIONS = [30, 60, 90, 120];
 
-type GameState = 'menu' | 'settings' | 'drawing' | 'reveal';
+type GameState = 'menu' | 'settings' | 'drawing' | 'reveal' | 'finished';
 type Difficulty = 'easy' | 'medium' | 'hard' | 'mixed';
 
 interface PathData {
@@ -47,7 +47,10 @@ interface GameSettings {
   timeLimit: number;
   difficulty: Difficulty;
   teamCount: 2 | 3 | 4;
+  totalRounds: number;
 }
+
+const ROUND_OPTIONS = [6, 8, 10, 12];
 
 // Root App
 export default function App() {
@@ -525,7 +528,9 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
     timeLimit: 60,
     difficulty: 'mixed',
     teamCount: 2,
+    totalRounds: 10,
   });
+  const [isTiebreaker, setIsTiebreaker] = useState(false);
   const [roundNumber, setRoundNumber] = useState(1);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -651,15 +656,22 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
       Animated.spring(scoreScale, { toValue: 1, friction: 3, useNativeDriver: true }),
     ]).start();
 
+    const nextRound = roundNumber + 1;
     setScores((prev) => {
       const newScores = [...prev];
       newScores[currentTeam] += 1;
       return newScores;
     });
     setCurrentTeam((prev) => (prev + 1) % settings.teamCount);
-    setRoundNumber((prev) => prev + 1);
-    setGameState('menu');
-  }, [currentTeam, settings.teamCount]);
+    setRoundNumber(nextRound);
+    
+    // Check if game should end
+    if (roundNumber >= settings.totalRounds) {
+      setGameState('finished');
+    } else {
+      setGameState('menu');
+    }
+  }, [currentTeam, settings.teamCount, settings.totalRounds, roundNumber]);
 
   const handleSkip = useCallback(() => {
     // Clear all timers
@@ -669,10 +681,17 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
     setShowWord(false);
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const nextRound = roundNumber + 1;
     setCurrentTeam((prev) => (prev + 1) % settings.teamCount);
-    setRoundNumber((prev) => prev + 1);
-    setGameState('menu');
-  }, [settings.teamCount]);
+    setRoundNumber(nextRound);
+    
+    // Check if game should end
+    if (roundNumber >= settings.totalRounds) {
+      setGameState('finished');
+    } else {
+      setGameState('menu');
+    }
+  }, [settings.teamCount, settings.totalRounds, roundNumber]);
 
   const clearCanvas = useCallback(() => {
     setPaths([]);
@@ -690,8 +709,18 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
     setScores(Array(settings.teamCount).fill(0));
     setCurrentTeam(0);
     setRoundNumber(1);
+    setIsTiebreaker(false);
+    setGameState('menu');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }, [settings.teamCount]);
+
+  const startTiebreaker = useCallback(() => {
+    setIsTiebreaker(true);
+    // Add one round per team for the tiebreaker
+    setSettings((s) => ({ ...s, totalRounds: roundNumber + s.teamCount - 1 }));
+    setGameState('menu');
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [roundNumber]);
 
   const handleTouchStart = (event: GestureResponderEvent) => {
     const { locationX, locationY } = event.nativeEvent;
@@ -852,6 +881,27 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
             ))}
           </View>
         </View>
+
+        {/* Total Rounds Setting */}
+        <View style={styles.settingCard}>
+          <View style={styles.settingHeader}>
+            <Text style={styles.settingIcon}>🔄</Text>
+            <Text style={styles.settingTitle}>Total Rounds</Text>
+          </View>
+          <View style={styles.optionGrid}>
+            {ROUND_OPTIONS.map((count) => (
+              <TouchableOpacity
+                key={count}
+                style={[styles.optionPill, settings.totalRounds === count && styles.optionPillActive]}
+                onPress={() => { setSettings((s) => ({ ...s, totalRounds: count })); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+              >
+                <Text style={[styles.optionPillText, settings.totalRounds === count && styles.optionPillTextActive]}>
+                  {count}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -986,15 +1036,214 @@ function LocalGameApp({ onBack }: { onBack: () => void }) {
     </SafeAreaView>
   );
 
+  // FINISHED SCREEN
+  const renderFinished = () => {
+    const maxScore = Math.max(...scores.slice(0, settings.teamCount));
+    const winners = scores
+      .slice(0, settings.teamCount)
+      .map((s, i) => ({ score: s, index: i }))
+      .filter((t) => t.score === maxScore);
+    const isTied = winners.length > 1;
+
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={finishedStyles.scrollContent}>
+          {/* Trophy */}
+          <View style={finishedStyles.trophySection}>
+            <Text style={finishedStyles.trophy}>
+              {isTied ? '🤝' : '🏆'}
+            </Text>
+            <Text style={finishedStyles.resultTitle}>
+              {isTied
+                ? isTiebreaker
+                  ? 'Still Tied!'
+                  : "It's a Tie!"
+                : `Team ${teamNames[winners[0].index]} Wins!`}
+            </Text>
+            {!isTied && (
+              <Text style={finishedStyles.winnerEmoji}>
+                {teamColors[winners[0].index]}
+              </Text>
+            )}
+          </View>
+
+          {/* Final Scores */}
+          <View style={finishedStyles.scoresContainer}>
+            {scores.slice(0, settings.teamCount).map((score, index) => {
+              const isWinner = !isTied && score === maxScore;
+              return (
+                <View
+                  key={index}
+                  style={[
+                    finishedStyles.teamFinalScore,
+                    { backgroundColor: `${teamBgColors[index]}40` },
+                    isWinner && finishedStyles.winningTeam,
+                  ]}
+                >
+                  <Text style={finishedStyles.teamEmoji}>{teamColors[index]}</Text>
+                  <Text style={finishedStyles.teamLabel}>Team {teamNames[index]}</Text>
+                  <Text style={finishedStyles.finalScore}>{score}</Text>
+                  {isWinner && <Text style={finishedStyles.crownEmoji}>👑</Text>}
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Actions */}
+          <View style={finishedStyles.actions}>
+            {isTied && (
+              <TouchableOpacity
+                style={finishedStyles.tiebreakerButton}
+                onPress={startTiebreaker}
+                activeOpacity={0.9}
+              >
+                <Text style={finishedStyles.tiebreakerText}>⚡ Tiebreaker Round!</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={finishedStyles.playAgainButton}
+              onPress={resetGame}
+              activeOpacity={0.9}
+            >
+              <Text style={finishedStyles.playAgainText}>🎮 New Game</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={finishedStyles.backButton} onPress={onBack}>
+              <Text style={finishedStyles.backButtonText}>← Back to Menu</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  };
+
   return (
     <>
       {gameState === 'menu' && renderMenu()}
       {gameState === 'settings' && renderSettings()}
       {gameState === 'drawing' && renderDrawing()}
       {gameState === 'reveal' && renderReveal()}
+      {gameState === 'finished' && renderFinished()}
     </>
   );
 }
+
+const finishedStyles = StyleSheet.create({
+  scrollContent: {
+    padding: 20,
+    alignItems: 'center',
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  trophySection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  trophy: {
+    fontSize: 80,
+    marginBottom: 12,
+  },
+  resultTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  winnerEmoji: {
+    fontSize: 48,
+    marginTop: 8,
+  },
+  scoresContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'center',
+    marginBottom: 32,
+    width: '100%',
+  },
+  teamFinalScore: {
+    borderRadius: 20,
+    padding: 20,
+    alignItems: 'center',
+    minWidth: 100,
+    flex: 1,
+    position: 'relative',
+  },
+  winningTeam: {
+    borderWidth: 3,
+    borderColor: '#FFE66D',
+    shadowColor: '#FFE66D',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  teamEmoji: {
+    fontSize: 32,
+    marginBottom: 4,
+  },
+  teamLabel: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  finalScore: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  crownEmoji: {
+    position: 'absolute',
+    top: -10,
+    right: 10,
+    fontSize: 24,
+  },
+  actions: {
+    width: '100%',
+    gap: 12,
+  },
+  tiebreakerButton: {
+    backgroundColor: '#FF6B6B',
+    padding: 20,
+    borderRadius: 20,
+    alignItems: 'center',
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  tiebreakerText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  playAgainButton: {
+    backgroundColor: '#4ECDC4',
+    padding: 18,
+    borderRadius: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  playAgainText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  backButton: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.7)',
+    fontWeight: '600',
+  },
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#6B4EE6' },
